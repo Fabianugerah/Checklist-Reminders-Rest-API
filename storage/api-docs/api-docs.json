@@ -1,0 +1,449 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Dokumentasi API",
+        "description": "Documentation for API endpoints",
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000",
+            "description": "Demo API Server"
+        }
+    ],
+    "paths": {
+        "/api/checklists": {
+            "get": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Ambil semua checklist user (admin bisa semua)",
+                "operationId": "348d0ba4f956147227c4e0f6574b8573",
+                "responses": {
+                    "200": {
+                        "description": "List checklist dikembalikan"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Buat checklist baru",
+                "operationId": "6cd3aa07d0b04a7619eeddde30be97bf",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "title",
+                                    "due_time",
+                                    "repeat_interval"
+                                ],
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "example": "Minum Air"
+                                    },
+                                    "due_time": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2025-07-28T09:00:00"
+                                    },
+                                    "repeat_interval": {
+                                        "type": "string",
+                                        "enum": [
+                                            "daily",
+                                            "3_days",
+                                            "weekly",
+                                            "monthly",
+                                            "yearly"
+                                        ],
+                                        "example": "weekly"
+                                    },
+                                    "repeat_days": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "enum": [
+                                                "monday",
+                                                "tuesday",
+                                                "wednesday",
+                                                "thursday",
+                                                "friday",
+                                                "saturday",
+                                                "sunday"
+                                            ]
+                                        },
+                                        "example": [
+                                            "monday",
+                                            "friday"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Checklist dibuat"
+                    },
+                    "422": {
+                        "description": "Validasi gagal"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/checklists/{id}": {
+            "get": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Lihat detail checklist berdasarkan ID",
+                "operationId": "0b6145970b9b33ac87c035bafa697e4f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "UUID checklist",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail checklist dikembalikan"
+                    },
+                    "403": {
+                        "description": "Unauthorized access"
+                    },
+                    "404": {
+                        "description": "Checklist tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Update checklist",
+                "operationId": "ceefd03f627edf699b4000d511899551",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "UUID checklist",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "example": "Update Judul Checklist"
+                                    },
+                                    "due_time": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "example": "2025-08-01T08:00:00"
+                                    },
+                                    "repeat_interval": {
+                                        "type": "string",
+                                        "enum": [
+                                            "daily",
+                                            "3_days",
+                                            "weekly",
+                                            "monthly",
+                                            "yearly"
+                                        ],
+                                        "example": "weekly"
+                                    },
+                                    "repeat_days": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "enum": [
+                                                "monday",
+                                                "tuesday",
+                                                "wednesday",
+                                                "thursday",
+                                                "friday",
+                                                "saturday",
+                                                "sunday"
+                                            ]
+                                        },
+                                        "example": [
+                                            "tuesday",
+                                            "thursday"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Checklist diperbarui"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Checklist tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Hapus checklist (soft delete)",
+                "operationId": "1e20f3721b541582dee802bd3db4f1bb",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "UUID checklist",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Checklist dihapus"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Checklist tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/register": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register user baru",
+                "description": "Digunakan untuk registrasi user atau admin (admin membutuhkan secret_code).",
+                "operationId": "47d5ee6b3638073a988b692b1a5902cf",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password",
+                                    "role"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "example": "john@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    },
+                                    "role": {
+                                        "type": "string",
+                                        "enum": [
+                                            "admin",
+                                            "user"
+                                        ],
+                                        "example": "user"
+                                    },
+                                    "secret_code": {
+                                        "type": "string",
+                                        "example": "my_secret_code"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Registrasi berhasil"
+                    },
+                    "403": {
+                        "description": "Secret code salah"
+                    },
+                    "422": {
+                        "description": "Validasi gagal"
+                    }
+                }
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login user",
+                "description": "User login dan mendapatkan token JWT yang disimpan di database.",
+                "operationId": "224ca9cc21e92b4e3291419882455b09",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "example": "john@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login berhasil dan token dikembalikan"
+                    },
+                    "401": {
+                        "description": "Kredensial salah"
+                    }
+                }
+            }
+        },
+        "/api/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Ambil data user berdasarkan token JWT",
+                "operationId": "aef6fdddec1e8495d4830821b4afdf54",
+                "responses": {
+                    "200": {
+                        "description": "Berhasil ambil data user"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout user",
+                "operationId": "67d5147477c548bfbc3f982833bbc7bd",
+                "responses": {
+                    "200": {
+                        "description": "Logout berhasil"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Masukkan token JWT Anda",
+                "name": "Authorization",
+                "in": "header",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Checklist",
+            "description": "Checklist"
+        },
+        {
+            "name": "Auth",
+            "description": "Auth"
+        }
+    ]
+}
