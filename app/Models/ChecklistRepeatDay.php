@@ -2,22 +2,33 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class ChecklistRepeatDay extends Model
 {
-    protected $fillable = ['checklist_id', 'day'];
+    use HasFactory;
 
-    protected static function boot()
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected static function booted()
     {
-        parent::boot();
-
         static::creating(function ($model) {
-            $model->id = (string) Str::uuid();
+            if (!$model->id) {
+                $model->id = (string) Str::uuid();
+            }
         });
     }
 
+    protected $fillable = [
+        'id',
+        'checklist_id',
+        'day',
+    ];
+
+    // Relasi balik ke checklist
     public function checklist()
     {
         return $this->belongsTo(Checklist::class);

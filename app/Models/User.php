@@ -6,20 +6,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Support\Str;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable implements JWTSubject
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    // 🧠 Tambahkan fungsi boot di sini
+    public $incrementing = false;
+    protected $keyType = 'string';
+
     protected static function boot()
     {
         parent::boot();
-
         static::creating(function ($model) {
-            $model->id = (string) Str::uuid(); // UUID saat membuat user baru
+            $model->id = (string) Str::uuid();
         });
     }
 
@@ -36,10 +37,12 @@ class User extends Authenticatable implements JWTSubject
         'remember_token',
     ];
 
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-    ];
+    public function checklists()
+    {
+        return $this->hasMany(Checklist::class);
+    }
 
+    // JWT
     public function getJWTIdentifier()
     {
         return $this->getKey();
@@ -49,9 +52,5 @@ class User extends Authenticatable implements JWTSubject
     {
         return [];
     }
-
-    public function checklists()
-    {
-        return $this->hasMany(Checklist::class, 'user_id');
-    }
 }
+

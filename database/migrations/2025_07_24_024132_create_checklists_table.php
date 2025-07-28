@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('user_id')->index();
             $table->string('title');
-            $table->timestamp('due_time');
+            $table->dateTime('due_time');
             $table->enum('repeat_interval', ['daily', '3_days', 'weekly', 'monthly', 'yearly'])->default('daily');
             $table->boolean('is_completed')->default(false);
             $table->softDeletes();
