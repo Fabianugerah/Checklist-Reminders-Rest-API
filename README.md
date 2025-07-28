@@ -12,7 +12,7 @@ A Laravel RESTful API that lets users manage checklist reminders. It supports **
 
 - 📋 **Checklist Management**
   - Create, Read, Update, Delete
-  - Repeat intervals: daily, weekly, monthly
+  - Repeat intervals: daily, weekly, monthly, yearly
   - Due time for reminders
   - Soft delete support
 
