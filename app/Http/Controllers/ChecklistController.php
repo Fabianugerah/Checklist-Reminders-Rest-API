@@ -175,7 +175,7 @@ class ChecklistController extends Controller
         $checklist->update($request->only('title', 'due_time', 'repeat_interval'));
 
         if ($request->repeat_interval === 'weekly') {
-            // Hapus hari lama, buat ulang
+            
             $checklist->repeatDays()->delete();
 
             if ($request->has('repeat_days')) {

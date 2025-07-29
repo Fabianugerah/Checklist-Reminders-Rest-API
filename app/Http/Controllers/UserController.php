@@ -86,7 +86,11 @@ class UserController extends Controller
 
         // Simpan token ke database (untuk studi kasus)
         $user->token = $token;
-        $user->save();
+        $loggedUser = User::find($user->id);
+        if ($loggedUser) {
+            $loggedUser->token = $token;
+            $loggedUser->save();
+        }
 
         return response()->json([
             'message' => 'Login success',
@@ -128,9 +132,11 @@ class UserController extends Controller
             JWTAuth::invalidate(JWTAuth::getToken());
 
             // Hapus token dari kolom users.token
-            $user = auth()->user();
-            $user->token = null;
-            $user->save();
+            $user = User::find(auth()->id());
+            if ($user) {
+                $user->token = null;
+                $user->save();
+            }
 
             return response()->json(['message' => 'Successfully logged out']);
         } catch (\Exception $e) {

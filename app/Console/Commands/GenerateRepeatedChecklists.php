@@ -49,7 +49,6 @@ class GenerateRepeatedChecklists extends Command
                     'is_completed' => false,
                 ]);
 
-                // Copy repeatDays jika weekly
                 if ($item->repeat_interval === 'weekly' && $item->repeatDays->isNotEmpty()) {
                     foreach ($item->repeatDays as $day) {
                         $newChecklist->repeatDays()->create([
