@@ -56,12 +56,12 @@
                                 "properties": {
                                     "title": {
                                         "type": "string",
-                                        "example": "Minum Air"
+                                        "example": "Olahraga"
                                     },
                                     "due_time": {
                                         "type": "string",
                                         "format": "date-time",
-                                        "example": "2025-07-28T09:00:00"
+                                        "example": "2025-07-30T10:00:00"
                                     },
                                     "repeat_interval": {
                                         "type": "string",
@@ -89,7 +89,7 @@
                                             ]
                                         },
                                         "example": [
-                                            "monday",
+                                            "sunday",
                                             "friday"
                                         ]
                                     }
@@ -178,12 +178,12 @@
                                 "properties": {
                                     "title": {
                                         "type": "string",
-                                        "example": "Update Judul Checklist"
+                                        "example": "Olahraga Pagi"
                                     },
                                     "due_time": {
                                         "type": "string",
                                         "format": "date-time",
-                                        "example": "2025-08-01T08:00:00"
+                                        "example": "2025-08-01T07:00:00"
                                     },
                                     "repeat_interval": {
                                         "type": "string",
@@ -274,10 +274,233 @@
                 ]
             }
         },
+        "/api/checklists/{id}/restore": {
+            "post": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Mengembalikan checklist yang telah dihapus (soft delete)",
+                "operationId": "7ac167bc2cf58e348481c64bc5285ad8",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "UUID checklist",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Checklist berhasil dikembalikan"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Checklist tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/checklists/{id}/complete": {
+            "post": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Tandai checklist sebagai selesai (beserta repeat days)",
+                "description": "Menandai checklist utama dan semua repeat_days sebagai selesai.",
+                "operationId": "88e53d2d836adaeeb66f347af26c0942",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "UUID checklist yang ingin ditandai selesai",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Checklist ditandai selesai"
+                    },
+                    "403": {
+                        "description": "Tidak diizinkan"
+                    },
+                    "404": {
+                        "description": "Checklist tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/checklists/{id}/uncomplete": {
+            "post": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Tandai checklist sebagai belum selesai (beserta repeat days)",
+                "description": "Menandai checklist utama dan semua repeat_days sebagai belum selesai.",
+                "operationId": "e4ab46c312c945e8ed42f04ec24d5676",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "UUID checklist yang ingin ditandai belum selesai",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Checklist ditandai belum selesai"
+                    },
+                    "403": {
+                        "description": "Tidak diizinkan"
+                    },
+                    "404": {
+                        "description": "Checklist tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/checklists/{id}/repeat-days/{day}/complete": {
+            "post": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Tandai checklist mingguan di hari tertentu sebagai selesai",
+                "operationId": "c3e9a2eca0e875f7a49a95daa4d28529",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "UUID checklist",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "day",
+                        "in": "path",
+                        "description": "Hari dalam minggu (e.g. monday, tuesday, dst)",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "monday",
+                                "tuesday",
+                                "wednesday",
+                                "thursday",
+                                "friday",
+                                "saturday",
+                                "sunday"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Hari checklist ditandai selesai"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/checklists/{id}/repeat-days/{day}/uncomplete": {
+            "post": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Tandai checklist mingguan di hari tertentu sebagai belum selesai",
+                "operationId": "52f260924da04b00e45064a385a17f0e",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "UUID checklist",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "day",
+                        "in": "path",
+                        "description": "Hari dalam minggu (e.g. monday, tuesday, dst)",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "monday",
+                                "tuesday",
+                                "wednesday",
+                                "thursday",
+                                "friday",
+                                "saturday",
+                                "sunday"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Hari checklist ditandai belum selesai"
+                    },
+                    "403": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Data tidak ditemukan"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/auth/register": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Register user baru",
                 "description": "Digunakan untuk registrasi user atau admin (admin membutuhkan secret_code).",
@@ -296,11 +519,11 @@
                                 "properties": {
                                     "name": {
                                         "type": "string",
-                                        "example": "John Doe"
+                                        "example": "Fabianugerah"
                                     },
                                     "email": {
                                         "type": "string",
-                                        "example": "john@example.com"
+                                        "example": "fabian@gmail.com"
                                     },
                                     "password": {
                                         "type": "string",
@@ -316,7 +539,7 @@
                                     },
                                     "secret_code": {
                                         "type": "string",
-                                        "example": "my_secret_code"
+                                        "example": "my_super_secret_admin_code"
                                     }
                                 },
                                 "type": "object"
@@ -340,7 +563,7 @@
         "/api/auth/login": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Login user",
                 "description": "User login dan mendapatkan token JWT yang disimpan di database.",
@@ -357,7 +580,7 @@
                                 "properties": {
                                     "email": {
                                         "type": "string",
-                                        "example": "john@example.com"
+                                        "example": "fabian@gmail.com"
                                     },
                                     "password": {
                                         "type": "string",
@@ -379,13 +602,13 @@
                 }
             }
         },
-        "/api/me": {
+        "/api/user": {
             "get": {
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Ambil data user berdasarkan token JWT",
-                "operationId": "aef6fdddec1e8495d4830821b4afdf54",
+                "operationId": "2130b7cce3aebae5b2f0aecd8f3cf0d3",
                 "responses": {
                     "200": {
                         "description": "Berhasil ambil data user"
@@ -404,7 +627,7 @@
         "/api/logout": {
             "post": {
                 "tags": [
-                    "Auth"
+                    "Users"
                 ],
                 "summary": "Logout user",
                 "operationId": "67d5147477c548bfbc3f982833bbc7bd",
@@ -442,8 +665,8 @@
             "description": "Checklist"
         },
         {
-            "name": "Auth",
-            "description": "Auth"
+            "name": "Users",
+            "description": "Users"
         }
     ]
 }

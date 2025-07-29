@@ -15,6 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('checklist_id')->index();
             $table->enum('day', ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']);
+            $table->boolean('is_completed')->default(false);
             $table->timestamps();
 
             $table->foreign('checklist_id')->references('id')->on('checklists')->onDelete('cascade');

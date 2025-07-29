@@ -15,18 +15,18 @@ class UserController extends Controller
     /**
      * @OA\Post(
      *     path="/api/auth/register",
-     *     tags={"Auth"},
+     *     tags={"Users"},
      *     summary="Register user baru",
      *     description="Digunakan untuk registrasi user atau admin (admin membutuhkan secret_code).",
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
      *             required={"name", "email", "password", "role"},
-     *             @OA\Property(property="name", type="string", example="John Doe"),
-     *             @OA\Property(property="email", type="string", example="john@example.com"),
+     *             @OA\Property(property="name", type="string", example="Fabianugerah"),
+     *             @OA\Property(property="email", type="string", example="fabian@gmail.com"),
      *             @OA\Property(property="password", type="string", example="password123"),
      *             @OA\Property(property="role", type="string", enum={"admin", "user"}, example="user"),
-     *             @OA\Property(property="secret_code", type="string", example="my_secret_code")
+     *             @OA\Property(property="secret_code", type="string", example="my_super_secret_admin_code")
      *         )
      *     ),
      *     @OA\Response(response=201, description="Registrasi berhasil"),
@@ -59,14 +59,14 @@ class UserController extends Controller
     /**
      * @OA\Post(
      *     path="/api/auth/login",
-     *     tags={"Auth"},
+     *     tags={"Users"},
      *     summary="Login user",
      *     description="User login dan mendapatkan token JWT yang disimpan di database.",
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
      *             required={"email", "password"},
-     *             @OA\Property(property="email", type="string", example="john@example.com"),
+     *             @OA\Property(property="email", type="string", example="fabian@gmail.com"),
      *             @OA\Property(property="password", type="string", example="password123")
      *         )
      *     ),
@@ -90,24 +90,23 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Login success',
-            'token' => $token,
             'user' => $user
         ]);
     }
 
 
-    // ME
+    // ME (Get User Info)
     /**
      * @OA\Get(
-     *     path="/api/me",
-     *     tags={"Auth"},
+     *     path="/api/user",
+     *     tags={"Users"},
      *     summary="Ambil data user berdasarkan token JWT",
      *     security={{"bearerAuth":{}}},
      *     @OA\Response(response=200, description="Berhasil ambil data user"),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function me()
+    public function user()
     {
         return response()->json(auth()->user());
     }
@@ -116,7 +115,7 @@ class UserController extends Controller
     /**
      * @OA\Post(
      *     path="/api/logout",
-     *     tags={"Auth"},
+     *     tags={"Users"},
      *     summary="Logout user",
      *     security={{"bearerAuth":{}}},
      *     @OA\Response(response=200, description="Logout berhasil"),

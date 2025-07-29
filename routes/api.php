@@ -26,7 +26,7 @@ Route::prefix('auth')->group(function () {
 // Protected routes (wajib pakai JWT)
 Route::middleware(['jwt.custom.auth'])->group(function () {
     // User info & logout
-    Route::get('/me', [UserController::class, 'me']);
+    Route::get('/user', [UserController::class, 'user']);
     Route::post('/logout', [UserController::class, 'logout']);
 
     // Checklist CRUD
@@ -35,4 +35,12 @@ Route::middleware(['jwt.custom.auth'])->group(function () {
     Route::get('/checklists/{id}', [ChecklistController::class, 'show']);
     Route::put('/checklists/{id}', [ChecklistController::class, 'update']);
     Route::delete('/checklists/{id}', [ChecklistController::class, 'destroy']);
+    Route::post('/checklists/{id}/restore', [ChecklistController::class, 'restore']);
+
+
+    // Checklist completion
+    Route::post('/checklists/{id}/complete', [ChecklistController::class, 'markAsComplete']);
+    Route::post('/checklists/{id}/uncomplete', [ChecklistController::class, 'unmarkAsComplete']);
+    Route::post('/checklists/{id}/repeat-days/{day}/complete', [ChecklistController::class, 'markRepeatDayAsComplete']);
+    Route::post('/checklists/{id}/repeat-days/{day}/uncomplete', [ChecklistController::class, 'unmarkRepeatDayAsComplete']);
 });
