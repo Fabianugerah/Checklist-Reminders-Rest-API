@@ -104,15 +104,25 @@ class UserController extends Controller
      * @OA\Get(
      *     path="/api/user",
      *     tags={"Users"},
-     *     summary="Ambil data user berdasarkan token JWT",
+     *     summary="Ambil data user yang sedang login (tanpa token)",
      *     security={{"bearerAuth":{}}},
-     *     @OA\Response(response=200, description="Berhasil ambil data user"),
+     *     @OA\Response(response=200, description="Data user berhasil dikembalikan"),
+     *     @OA\Response(response=404, description="User tidak ditemukan"),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
     public function user()
     {
-        return response()->json(auth()->user());
+        $user = User::find(auth()->id());
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        // Sembunyikan token sebelum dikirim
+        unset($user->token);
+
+        return response()->json($user);
     }
 
     // LOGOUT

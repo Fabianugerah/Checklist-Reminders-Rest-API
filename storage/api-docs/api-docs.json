@@ -408,7 +408,6 @@
                     {
                         "name": "day",
                         "in": "path",
-                        "description": "Hari dalam minggu (e.g. monday, tuesday, dst)",
                         "required": true,
                         "schema": {
                             "type": "string",
@@ -463,7 +462,6 @@
                     {
                         "name": "day",
                         "in": "path",
-                        "description": "Hari dalam minggu (e.g. monday, tuesday, dst)",
                         "required": true,
                         "schema": {
                             "type": "string",
@@ -607,11 +605,14 @@
                 "tags": [
                     "Users"
                 ],
-                "summary": "Ambil data user berdasarkan token JWT",
+                "summary": "Ambil data user yang sedang login (tanpa token)",
                 "operationId": "2130b7cce3aebae5b2f0aecd8f3cf0d3",
                 "responses": {
                     "200": {
-                        "description": "Berhasil ambil data user"
+                        "description": "Data user berhasil dikembalikan"
+                    },
+                    "404": {
+                        "description": "User tidak ditemukan"
                     },
                     "401": {
                         "description": "Unauthorized"

@@ -175,7 +175,7 @@ class ChecklistController extends Controller
         $checklist->update($request->only('title', 'due_time', 'repeat_interval'));
 
         if ($request->repeat_interval === 'weekly') {
-            
+
             $checklist->repeatDays()->delete();
 
             if ($request->has('repeat_days')) {
@@ -361,7 +361,6 @@ class ChecklistController extends Controller
      *         name="day",
      *         in="path",
      *         required=true,
-     *         description="Hari dalam minggu (e.g. monday, tuesday, dst)",
      *         @OA\Schema(type="string", enum={"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"})
      *     ),
      *     @OA\Response(response=200, description="Hari checklist ditandai selesai"),
@@ -379,7 +378,7 @@ class ChecklistController extends Controller
         }
 
         $repeatDay = $checklist->repeatDays()->where('day', $day)->first();
-
+        
         if (!$repeatDay) {
             return response()->json(['message' => 'Repeat day not found'], 404);
         }
@@ -407,7 +406,6 @@ class ChecklistController extends Controller
      *         name="day",
      *         in="path",
      *         required=true,
-     *         description="Hari dalam minggu (e.g. monday, tuesday, dst)",
      *         @OA\Schema(type="string", enum={"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"})
      *     ),
      *     @OA\Response(response=200, description="Hari checklist ditandai belum selesai"),
