@@ -35,6 +35,7 @@ class User extends Authenticatable implements JWTSubject
     protected $hidden = [
         'password',
         'remember_token',
+        'updated_at',
     ];
 
     public function checklists()

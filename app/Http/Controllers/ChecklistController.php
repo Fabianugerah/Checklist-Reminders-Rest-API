@@ -6,6 +6,7 @@ use App\Models\Checklist;
 use App\Models\ChecklistRepeatDay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
 
 class ChecklistController extends Controller
 {
@@ -27,6 +28,82 @@ class ChecklistController extends Controller
         $checklists = Checklist::with('repeatDays')
             ->when($user->role !== 'admin', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
+            })
+            ->get();
+
+        return response()->json($checklists);
+    }
+
+    // GET CHECKLISTS TODAY
+    /**
+     * @OA\Get(
+     * path="/api/checklists/today",
+     * tags={"Checklist"},
+     * summary="Ambil checklist yang jatuh tempo hari ini",
+     * description="Mengembalikan daftar checklist yang jatuh tempo hari ini, termasuk yang berulang harian atau mingguan pada hari ini.",
+     * security={{"bearerAuth":{}}},
+     * @OA\Response(response=200, description="List checklist hari ini dikembalikan"),
+     * @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function todayChecklists()
+    {
+        $user = Auth::user();
+        $today = Carbon::today();
+        $dayName = strtolower($today->englishDayOfWeek);
+
+        $checklists = Checklist::with('repeatDays')
+            ->when($user->role !== 'admin', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->where(function ($query) use ($today, $dayName) {
+                // Checklists dengan due_time hari ini
+                $query->whereDate('due_time', $today);
+
+                // Checklists harian
+                $query->orWhere('repeat_interval', 'daily');
+
+                // Checklists mingguan di hari ini
+                $query->orWhere(function ($q) use ($dayName) {
+                    $q->where('repeat_interval', 'weekly')
+                        ->whereHas('repeatDays', function ($q2) use ($dayName) {
+                            $q2->where('day', $dayName);
+                        });
+                });
+            })
+            ->get();
+
+        return response()->json($checklists);
+    }
+
+    // GET CHECKLISTS THIS WEEK
+    /**
+     * @OA\Get(
+     * path="/api/checklists/weekly",
+     * tags={"Checklist"},
+     * summary="Ambil checklist yang jatuh tempo minggu ini",
+     * description="Mengembalikan daftar checklist yang jatuh tempo dalam minggu ini, termasuk yang berulang harian atau mingguan.",
+     * security={{"bearerAuth":{}}},
+     * @OA\Response(response=200, description="List checklist minggu ini dikembalikan"),
+     * @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function weeklyChecklists()
+    {
+        $user = Auth::user();
+        $startOfWeek = Carbon::now()->startOfWeek(Carbon::MONDAY);
+        $endOfWeek = Carbon::now()->endOfWeek(Carbon::SUNDAY);
+
+        $checklists = Checklist::with('repeatDays')
+            ->when($user->role !== 'admin', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->where(function ($query) use ($startOfWeek, $endOfWeek) {
+                // Checklists dengan due_time di minggu ini
+                $query->whereBetween('due_time', [$startOfWeek, $endOfWeek]);
+
+                // Checklists harian dan mingguan
+                $query->orWhereIn('repeat_interval', ['daily', 'weekly']);
             })
             ->get();
 
@@ -378,7 +455,7 @@ class ChecklistController extends Controller
         }
 
         $repeatDay = $checklist->repeatDays()->where('day', $day)->first();
-        
+
         if (!$repeatDay) {
             return response()->json(['message' => 'Repeat day not found'], 404);
         }

@@ -117,6 +117,52 @@
                 ]
             }
         },
+        "/api/checklists/today": {
+            "get": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Ambil checklist yang jatuh tempo hari ini",
+                "description": "Mengembalikan daftar checklist yang jatuh tempo hari ini, termasuk yang berulang harian atau mingguan pada hari ini.",
+                "operationId": "4021737ce25bb5f4096f0d9c09fc278b",
+                "responses": {
+                    "200": {
+                        "description": "List checklist hari ini dikembalikan"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/checklists/weekly": {
+            "get": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Ambil checklist yang jatuh tempo minggu ini",
+                "description": "Mengembalikan daftar checklist yang jatuh tempo dalam minggu ini, termasuk yang berulang harian atau mingguan.",
+                "operationId": "a7c2f3fde132037643f02303cc75fcda",
+                "responses": {
+                    "200": {
+                        "description": "List checklist minggu ini dikembalikan"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/checklists/{id}": {
             "get": {
                 "tags": [
@@ -605,7 +651,7 @@
                 "tags": [
                     "Users"
                 ],
-                "summary": "Ambil data user yang sedang login (tanpa token)",
+                "summary": "Ambil data user saat ini",
                 "operationId": "2130b7cce3aebae5b2f0aecd8f3cf0d3",
                 "responses": {
                     "200": {

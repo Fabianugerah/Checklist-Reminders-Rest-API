@@ -99,12 +99,12 @@ class UserController extends Controller
     }
 
 
-    // ME (Get User Info)
+    // Get User (Get User Info)
     /**
      * @OA\Get(
      *     path="/api/user",
      *     tags={"Users"},
-     *     summary="Ambil data user yang sedang login (tanpa token)",
+     *     summary="Ambil data user saat ini",
      *     security={{"bearerAuth":{}}},
      *     @OA\Response(response=200, description="Data user berhasil dikembalikan"),
      *     @OA\Response(response=404, description="User tidak ditemukan"),
@@ -119,7 +119,6 @@ class UserController extends Controller
             return response()->json(['message' => 'User not found'], 404);
         }
 
-        // Sembunyikan token sebelum dikirim
         unset($user->token);
 
         return response()->json($user);
