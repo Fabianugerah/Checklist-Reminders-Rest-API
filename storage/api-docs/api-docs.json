@@ -117,6 +117,28 @@
                 ]
             }
         },
+        "/api/checklists/completed": {
+            "get": {
+                "tags": [
+                    "Checklist"
+                ],
+                "summary": "Ambil semua checklist yang sudah selesai (is_completed = true)",
+                "operationId": "9180a5dbf3094d9dd10437f606751198",
+                "responses": {
+                    "200": {
+                        "description": "Checklist yang sudah selesai dikembalikan"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/checklists/today": {
             "get": {
                 "tags": [
@@ -433,13 +455,14 @@
                 ]
             }
         },
-        "/api/checklists/{id}/repeat-days/{day}/complete": {
+        "/api/checklists/{id}/complete-today": {
             "post": {
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Tandai checklist mingguan di hari tertentu sebagai selesai",
-                "operationId": "c3e9a2eca0e875f7a49a95daa4d28529",
+                "summary": "Tandai repeat day checklist weekly",
+                "description": "Secara otomatis menandai checklist weekly berdasarkan hari ini (misalnya 'monday').",
+                "operationId": "d574e1d404006e1ec7f6772c614bbce8",
                 "parameters": [
                     {
                         "name": "id",
@@ -450,34 +473,17 @@
                             "type": "string",
                             "format": "uuid"
                         }
-                    },
-                    {
-                        "name": "day",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "monday",
-                                "tuesday",
-                                "wednesday",
-                                "thursday",
-                                "friday",
-                                "saturday",
-                                "sunday"
-                            ]
-                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Hari checklist ditandai selesai"
+                        "description": "Repeat day hari ini ditandai selesai"
                     },
                     "403": {
                         "description": "Unauthorized"
                     },
                     "404": {
-                        "description": "Data tidak ditemukan"
+                        "description": "Checklist tidak ditemukan"
                     }
                 },
                 "security": [
@@ -487,13 +493,14 @@
                 ]
             }
         },
-        "/api/checklists/{id}/repeat-days/{day}/uncomplete": {
+        "/api/checklists/{id}/uncomplete-today": {
             "post": {
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Tandai checklist mingguan di hari tertentu sebagai belum selesai",
-                "operationId": "52f260924da04b00e45064a385a17f0e",
+                "summary": "Tandai repeat day checklist hari ini sebagai belum selesai",
+                "description": "Menandai repeat day checklist hari ini sebagai belum selesai.",
+                "operationId": "5b43d17d81bc86d099272c2676023473",
                 "parameters": [
                     {
                         "name": "id",
@@ -504,34 +511,17 @@
                             "type": "string",
                             "format": "uuid"
                         }
-                    },
-                    {
-                        "name": "day",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "monday",
-                                "tuesday",
-                                "wednesday",
-                                "thursday",
-                                "friday",
-                                "saturday",
-                                "sunday"
-                            ]
-                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Hari checklist ditandai belum selesai"
+                        "description": "Repeat day hari ini ditandai belum selesai"
                     },
                     "403": {
                         "description": "Unauthorized"
                     },
                     "404": {
-                        "description": "Data tidak ditemukan"
+                        "description": "Checklist atau repeat day tidak ditemukan"
                     }
                 },
                 "security": [

@@ -31,8 +31,10 @@ Route::middleware(['jwt.custom.auth'])->group(function () {
 
     // Checklist View
     Route::get('/checklists', [ChecklistController::class, 'index']);
+    Route::get('/checklists/completed', [ChecklistController::class, 'completedChecklists']);
     Route::get('/checklists/today', [ChecklistController::class, 'todayChecklists']);
     Route::get('/checklists/weekly', [ChecklistController::class, 'weeklyChecklists']);
+
 
     // Checklist CRUD
     Route::post('/checklists', [ChecklistController::class, 'store']);
@@ -44,6 +46,6 @@ Route::middleware(['jwt.custom.auth'])->group(function () {
     // Checklist completion
     Route::post('/checklists/{id}/complete', [ChecklistController::class, 'markAsComplete']);
     Route::post('/checklists/{id}/uncomplete', [ChecklistController::class, 'unmarkAsComplete']);
-    Route::post('/checklists/{id}/repeat-days/{day}/complete', [ChecklistController::class, 'markRepeatDayAsComplete']);
-    Route::post('/checklists/{id}/repeat-days/{day}/uncomplete', [ChecklistController::class, 'unmarkRepeatDayAsComplete']);
+    Route::post('/checklists/{id}/complete-today', [ChecklistController::class, 'completeTodayRepeatDay']);
+    Route::post('/checklists/{id}/uncomplete-today', [ChecklistController::class, 'uncompleteTodayRepeatDay']);
 });

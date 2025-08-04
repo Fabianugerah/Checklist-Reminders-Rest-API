@@ -10,7 +10,7 @@ use Illuminate\Support\Carbon;
 
 class ChecklistController extends Controller
 {
-    // GET /checklists
+    // GET ALL CHECKLISTS
     /**
      * @OA\Get(
      *     path="/api/checklists",
@@ -29,10 +29,36 @@ class ChecklistController extends Controller
             ->when($user->role !== 'admin', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
+            ->where('is_completed', false)
             ->get();
 
         return response()->json($checklists);
     }
+
+    /**
+     * @OA\Get(
+     *     path="/api/checklists/completed",
+     *     tags={"Checklist"},
+     *     summary="Ambil semua checklist yang sudah selesai (is_completed = true)",
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(response=200, description="Checklist yang sudah selesai dikembalikan"),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function completedChecklists()
+    {
+        $user = Auth::user();
+
+        $checklists = Checklist::with('repeatDays')
+            ->when($user->role !== 'admin', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->where('is_completed', true)
+            ->get();
+
+        return response()->json($checklists);
+    }
+
 
     // GET CHECKLISTS TODAY
     /**
@@ -56,25 +82,22 @@ class ChecklistController extends Controller
             ->when($user->role !== 'admin', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
+            ->where('is_completed', false)
             ->where(function ($query) use ($today, $dayName) {
-                // Checklists dengan due_time hari ini
-                $query->whereDate('due_time', $today);
-
-                // Checklists harian
-                $query->orWhere('repeat_interval', 'daily');
-
-                // Checklists mingguan di hari ini
-                $query->orWhere(function ($q) use ($dayName) {
-                    $q->where('repeat_interval', 'weekly')
-                        ->whereHas('repeatDays', function ($q2) use ($dayName) {
-                            $q2->where('day', $dayName);
-                        });
-                });
+                $query->whereDate('due_time', $today)
+                    ->orWhere('repeat_interval', 'daily')
+                    ->orWhere(function ($q) use ($dayName) {
+                        $q->where('repeat_interval', 'weekly')
+                            ->whereHas('repeatDays', function ($q2) use ($dayName) {
+                                $q2->where('day', $dayName);
+                            });
+                    });
             })
             ->get();
 
         return response()->json($checklists);
     }
+
 
     // GET CHECKLISTS THIS WEEK
     /**
@@ -98,19 +121,19 @@ class ChecklistController extends Controller
             ->when($user->role !== 'admin', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
+            ->where('is_completed', false)
             ->where(function ($query) use ($startOfWeek, $endOfWeek) {
-                // Checklists dengan due_time di minggu ini
-                $query->whereBetween('due_time', [$startOfWeek, $endOfWeek]);
-
-                // Checklists harian dan mingguan
-                $query->orWhereIn('repeat_interval', ['daily', 'weekly']);
+                $query->whereBetween('due_time', [$startOfWeek, $endOfWeek])
+                    ->orWhereIn('repeat_interval', ['daily', 'weekly']);
             })
             ->get();
 
         return response()->json($checklists);
     }
 
-    // POST /checklists
+
+
+    // POST CHECKLISTS
     /**
      * @OA\Post(
      *     path="/api/checklists",
@@ -169,7 +192,7 @@ class ChecklistController extends Controller
         return response()->json(['message' => 'Checklist created', 'data' => $checklist]);
     }
 
-    // GET /checklists/{id}
+    // GET CHECKLIST BY ID
     /**
      * @OA\Get(
      *     path="/api/checklists/{id}",
@@ -200,7 +223,7 @@ class ChecklistController extends Controller
         return response()->json($checklist);
     }
 
-    // PUT /checklists/{id}
+    // PUT CHECKLISTS
     /**
      * @OA\Put(
      *     path="/api/checklists/{id}",
@@ -268,7 +291,7 @@ class ChecklistController extends Controller
         return response()->json(['message' => 'Checklist updated', 'data' => $checklist]);
     }
 
-    // DELETE /checklists/{id}
+    // DELETE CHECKLISTS (SOFT DELETE)
     /**
      * @OA\Delete(
      *     path="/api/checklists/{id}",
@@ -301,6 +324,7 @@ class ChecklistController extends Controller
         return response()->json(['message' => 'Checklist deleted']);
     }
 
+    // RESTORE CHECKLISTS (SOFT DELETE)
     /**
      * @OA\Post(
      *     path="/api/checklists/{id}/restore",
@@ -345,7 +369,7 @@ class ChecklistController extends Controller
         ]);
     }
 
-
+    // MARK CHECKLIST AS COMPLETE AND CREATE NEW REPEAT
     /**
      * @OA\Post(
      *     path="/api/checklists/{id}/complete",
@@ -367,7 +391,7 @@ class ChecklistController extends Controller
      */
     public function markAsComplete($id)
     {
-        $checklist = Checklist::findOrFail($id);
+        $checklist = Checklist::with('repeatDays')->findOrFail($id);
         $user = auth()->user();
 
         if ($user->role !== 'admin' && $checklist->user_id !== $user->id) {
@@ -379,12 +403,45 @@ class ChecklistController extends Controller
 
         $checklist->repeatDays()->update(['is_completed' => true]);
 
-        return response()->json([
-            'message' => 'Checklist marked as completed',
-            'data' => $checklist
-        ]);
+        $newDueTime = match ($checklist->repeat_interval) {
+            'daily'    => \Carbon\Carbon::parse($checklist->due_time)->addDay(),
+            '3_days'   => \Carbon\Carbon::parse($checklist->due_time)->addDays(3),
+            'weekly'   => \Carbon\Carbon::parse($checklist->due_time)->addWeek(),
+            'monthly'  => \Carbon\Carbon::parse($checklist->due_time)->addMonth(),
+            'yearly'   => \Carbon\Carbon::parse($checklist->due_time)->addYear(),
+            default    => null,
+        };
+
+        if ($newDueTime) {
+            $newChecklist = Checklist::create([
+                'user_id'         => $checklist->user_id,
+                'title'           => $checklist->title,
+                'due_time'        => $newDueTime,
+                'repeat_interval' => $checklist->repeat_interval,
+                'is_completed'    => false,
+            ]);
+
+            if ($checklist->repeat_interval === 'weekly' && $checklist->repeatDays) {
+                foreach ($checklist->repeatDays as $repeatDay) {
+                    ChecklistRepeatDay::create([
+                        'checklist_id' => $newChecklist->id,
+                        'day'          => $repeatDay->day,
+                        'is_completed' => false,
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'message'           => 'Checklist marked as completed and new checklist created.',
+                'new_checklist_id'  => $newChecklist->id,
+                'new_due_time'      => $newDueTime,
+            ]);
+        }
+
+        return response()->json(['message' => 'Checklist marked as completed (non-repeatable or invalid interval).']);
     }
 
+    // UNMARK CHECKLIST AS COMPLETE AND UNCOMPLETE REPEAT DAYS
     /**
      * @OA\Post(
      *     path="/api/checklists/{id}/uncomplete",
@@ -423,9 +480,10 @@ class ChecklistController extends Controller
 
     /**
      * @OA\Post(
-     *     path="/api/checklists/{id}/repeat-days/{day}/complete",
+     *     path="/api/checklists/{id}/complete-today",
      *     tags={"Checklist"},
-     *     summary="Tandai checklist mingguan di hari tertentu sebagai selesai",
+     *     summary="Tandai repeat day checklist weekly",
+     *     description="Secara otomatis menandai checklist weekly berdasarkan hari ini (misalnya 'monday').",
      *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="id",
@@ -434,43 +492,77 @@ class ChecklistController extends Controller
      *         description="UUID checklist",
      *         @OA\Schema(type="string", format="uuid")
      *     ),
-     *     @OA\Parameter(
-     *         name="day",
-     *         in="path",
-     *         required=true,
-     *         @OA\Schema(type="string", enum={"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"})
-     *     ),
-     *     @OA\Response(response=200, description="Hari checklist ditandai selesai"),
+     *     @OA\Response(response=200, description="Repeat day hari ini ditandai selesai"),
      *     @OA\Response(response=403, description="Unauthorized"),
-     *     @OA\Response(response=404, description="Data tidak ditemukan")
+     *     @OA\Response(response=404, description="Checklist tidak ditemukan")
      * )
      */
-    public function markRepeatDayAsComplete($id, $day)
+    public function completeTodayRepeatDay($id)
     {
         $user = Auth::user();
-        $checklist = Checklist::findOrFail($id);
+        $checklist = Checklist::with('repeatDays')->findOrFail($id);
 
         if ($user->role !== 'admin' && $checklist->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $repeatDay = $checklist->repeatDays()->where('day', $day)->first();
+        if ($checklist->repeat_interval !== 'weekly') {
+            return response()->json(['message' => 'This feature only supports weekly checklists'], 400);
+        }
+
+        $today = strtolower(Carbon::today()->englishDayOfWeek);
+        $repeatDay = $checklist->repeatDays()->where('day', $today)->first();
 
         if (!$repeatDay) {
-            return response()->json(['message' => 'Repeat day not found'], 404);
+            return response()->json(['message' => "No repeat day found for today ($today)"], 404);
+        }
+
+        if ($repeatDay->is_completed) {
+            return response()->json(['message' => "Repeat day '$today' already marked as completed"]);
         }
 
         $repeatDay->is_completed = true;
         $repeatDay->save();
 
-        return response()->json(['message' => "Repeat day '$day' marked as completed"]);
+        // Cek apakah semua repeat day sudah complete
+        $allCompleted = $checklist->repeatDays()->where('is_completed', false)->count() === 0;
+
+        if ($allCompleted) {
+            $checklist->is_completed = true;
+            $checklist->save();
+
+            // Buat checklist baru untuk minggu depan
+            $newChecklist = Checklist::create([
+                'user_id' => $checklist->user_id,
+                'title' => $checklist->title,
+                'due_time' => Carbon::parse($checklist->due_time)->addWeek(),
+                'repeat_interval' => $checklist->repeat_interval,
+                'is_completed' => false,
+            ]);
+
+            foreach ($checklist->repeatDays as $rd) {
+                ChecklistRepeatDay::create([
+                    'checklist_id' => $newChecklist->id,
+                    'day' => $rd->day,
+                    'is_completed' => false,
+                ]);
+            }
+
+            return response()->json([
+                'message' => "Repeat day '$today' marked as completed. Checklist completed and new weekly checklist created.",
+                'new_checklist_id' => $newChecklist->id,
+            ]);
+        }
+
+        return response()->json(['message' => "Repeat day '$today' marked as completed"]);
     }
 
     /**
      * @OA\Post(
-     *     path="/api/checklists/{id}/repeat-days/{day}/uncomplete",
+     *     path="/api/checklists/{id}/uncomplete-today",
      *     tags={"Checklist"},
-     *     summary="Tandai checklist mingguan di hari tertentu sebagai belum selesai",
+     *     summary="Tandai repeat day checklist hari ini sebagai belum selesai",
+     *     description="Menandai repeat day checklist hari ini sebagai belum selesai.",
      *     security={{"bearerAuth":{}}},
      *     @OA\Parameter(
      *         name="id",
@@ -479,35 +571,37 @@ class ChecklistController extends Controller
      *         description="UUID checklist",
      *         @OA\Schema(type="string", format="uuid")
      *     ),
-     *     @OA\Parameter(
-     *         name="day",
-     *         in="path",
-     *         required=true,
-     *         @OA\Schema(type="string", enum={"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"})
-     *     ),
-     *     @OA\Response(response=200, description="Hari checklist ditandai belum selesai"),
+     *     @OA\Response(response=200, description="Repeat day hari ini ditandai belum selesai"),
      *     @OA\Response(response=403, description="Unauthorized"),
-     *     @OA\Response(response=404, description="Data tidak ditemukan")
+     *     @OA\Response(response=404, description="Checklist atau repeat day tidak ditemukan")
      * )
      */
-    public function unmarkRepeatDayAsComplete($id, $day)
+    public function uncompleteTodayRepeatDay($id)
     {
         $user = Auth::user();
-        $checklist = Checklist::findOrFail($id);
+        $checklist = Checklist::with('repeatDays')->findOrFail($id);
 
         if ($user->role !== 'admin' && $checklist->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $repeatDay = $checklist->repeatDays()->where('day', $day)->first();
+        $today = strtolower(Carbon::now()->englishDayOfWeek);
+
+        $repeatDay = $checklist->repeatDays()->where('day', $today)->first();
 
         if (!$repeatDay) {
-            return response()->json(['message' => 'Repeat day not found'], 404);
+            return response()->json(['message' => "Repeat day for today ($today) not found"], 404);
         }
 
         $repeatDay->is_completed = false;
         $repeatDay->save();
 
-        return response()->json(['message' => "Repeat day '$day' marked as not completed"]);
+        // Jika checklist utama sudah selesai karena semua repeatDay, maka batalkan checklist utama
+        if ($checklist->is_completed) {
+            $checklist->is_completed = false;
+            $checklist->save();
+        }
+
+        return response()->json(['message' => "Repeat day for today ($today) marked as not completed"]);
     }
 }
