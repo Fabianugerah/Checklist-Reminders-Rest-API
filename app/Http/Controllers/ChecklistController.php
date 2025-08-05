@@ -78,18 +78,28 @@ class ChecklistController extends Controller
         $today = Carbon::today();
         $dayName = strtolower($today->englishDayOfWeek);
 
-        $checklists = Checklist::with('repeatDays')
+        $checklists = Checklist::with(['repeatDays' => function ($q) use ($dayName) {
+            $q->where('day', $dayName)
+                ->where('is_completed', false);
+        }])
             ->when($user->role !== 'admin', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
             ->where('is_completed', false)
             ->where(function ($query) use ($today, $dayName) {
-                $query->whereDate('due_time', $today)
-                    ->orWhere('repeat_interval', 'daily')
+                $query
+                    ->whereDate('due_time', $today)
+
+                    ->orWhere(function ($q) use ($today) {
+                        $q->where('repeat_interval', 'daily')
+                            ->whereDate('due_time', '<=', $today);
+                    })
+
                     ->orWhere(function ($q) use ($dayName) {
                         $q->where('repeat_interval', 'weekly')
                             ->whereHas('repeatDays', function ($q2) use ($dayName) {
-                                $q2->where('day', $dayName);
+                                $q2->where('day', $dayName)
+                                    ->where('is_completed', false);
                             });
                     });
             })
@@ -97,7 +107,6 @@ class ChecklistController extends Controller
 
         return response()->json($checklists);
     }
-
 
     // GET CHECKLISTS THIS WEEK
     /**
@@ -114,23 +123,36 @@ class ChecklistController extends Controller
     public function weeklyChecklists()
     {
         $user = Auth::user();
-        $startOfWeek = Carbon::now()->startOfWeek(Carbon::MONDAY);
-        $endOfWeek = Carbon::now()->endOfWeek(Carbon::SUNDAY);
+        $today = Carbon::today();
+        $startOfWeek = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $endOfWeek = $today->copy()->endOfWeek(Carbon::SUNDAY);
 
-        $checklists = Checklist::with('repeatDays')
+        $checklists = Checklist::with(['repeatDays' => function ($q) {
+            $q->where('is_completed', false);
+        }])
             ->when($user->role !== 'admin', function ($q) use ($user) {
                 $q->where('user_id', $user->id);
             })
             ->where('is_completed', false)
             ->where(function ($query) use ($startOfWeek, $endOfWeek) {
-                $query->whereBetween('due_time', [$startOfWeek, $endOfWeek])
-                    ->orWhereIn('repeat_interval', ['daily', 'weekly']);
+                $query
+                    ->whereBetween('due_time', [$startOfWeek, $endOfWeek])
+
+                    ->orWhere(function ($q) use ($endOfWeek) {
+                        $q->whereIn('repeat_interval', ['daily', '3_days', 'weekly', 'monthly', 'yearly'])
+                            ->whereDate('due_time', '<=', $endOfWeek);
+                    });
+            })
+            ->where(function ($q) {
+                $q->where('repeat_interval', '!=', 'weekly')
+                    ->orWhereHas('repeatDays', function ($q2) {
+                        $q2->where('is_completed', false);
+                    });
             })
             ->get();
 
         return response()->json($checklists);
     }
-
 
 
     // POST CHECKLISTS
@@ -524,14 +546,12 @@ class ChecklistController extends Controller
         $repeatDay->is_completed = true;
         $repeatDay->save();
 
-        // Cek apakah semua repeat day sudah complete
         $allCompleted = $checklist->repeatDays()->where('is_completed', false)->count() === 0;
 
         if ($allCompleted) {
             $checklist->is_completed = true;
             $checklist->save();
 
-            // Buat checklist baru untuk minggu depan
             $newChecklist = Checklist::create([
                 'user_id' => $checklist->user_id,
                 'title' => $checklist->title,
@@ -596,7 +616,6 @@ class ChecklistController extends Controller
         $repeatDay->is_completed = false;
         $repeatDay->save();
 
-        // Jika checklist utama sudah selesai karena semua repeatDay, maka batalkan checklist utama
         if ($checklist->is_completed) {
             $checklist->is_completed = false;
             $checklist->save();

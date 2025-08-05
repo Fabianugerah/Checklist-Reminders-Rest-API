@@ -573,7 +573,7 @@
                                     },
                                     "secret_code": {
                                         "type": "string",
-                                        "example": "my_super_secret_admin_code"
+                                        "example": "admin_secret_code"
                                     }
                                 },
                                 "type": "object"

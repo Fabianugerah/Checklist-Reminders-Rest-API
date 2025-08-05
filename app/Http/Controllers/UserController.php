@@ -26,7 +26,7 @@ class UserController extends Controller
      *             @OA\Property(property="email", type="string", example="fabian@gmail.com"),
      *             @OA\Property(property="password", type="string", example="password123"),
      *             @OA\Property(property="role", type="string", enum={"admin", "user"}, example="user"),
-     *             @OA\Property(property="secret_code", type="string", example="my_super_secret_admin_code")
+     *             @OA\Property(property="secret_code", type="string", example="admin_secret_code")
      *         )
      *     ),
      *     @OA\Response(response=201, description="Registrasi berhasil"),
