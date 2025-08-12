@@ -14,11 +14,27 @@ return new class extends Migration
         Schema::create('checklist_repeat_days', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('checklist_id')->index();
-            $table->enum('day', ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']);
-            $table->boolean('is_completed')->default(false);
+            $table->uuid('parent_checklist_id')->nullable()->index();
+            $table->enum('day', [
+                'monday',
+                'tuesday',
+                'wednesday',
+                'thursday',
+                'friday',
+                'saturday',
+                'sunday'
+            ]);
             $table->timestamps();
 
-            $table->foreign('checklist_id')->references('id')->on('checklists')->onDelete('cascade');
+            $table->foreign('checklist_id')
+                ->references('id')
+                ->on('checklists')
+                ->onDelete('cascade');
+
+            $table->foreign('parent_checklist_id')
+                ->references('id')
+                ->on('checklists')
+                ->onDelete('cascade');
         });
     }
 

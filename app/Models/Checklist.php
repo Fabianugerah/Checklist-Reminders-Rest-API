@@ -26,10 +26,21 @@ class Checklist extends Model
     protected $fillable = [
         'id',
         'user_id',
+        'parent_checklist_id',
         'title',
         'due_time',
         'repeat_interval',
+        'repeat_type',
+        'repeat_end_date',
+        'repeat_max_count',
+        'repeat_current_count',
         'is_completed'
+    ];
+
+    protected $casts = [
+        'due_time' => 'datetime',
+        'repeat_end_date' => 'date',
+        'is_completed' => 'boolean',
     ];
 
     // Relasi ke user
@@ -38,9 +49,54 @@ class Checklist extends Model
         return $this->belongsTo(User::class);
     }
 
-    // Relasi ke repeat days
+    // Relasi ke parent checklist (original)
+    public function parentChecklist()
+    {
+        return $this->belongsTo(Checklist::class, 'parent_checklist_id');
+    }
+
+    // Relasi ke child checklists (repeat instances)
+    public function childChecklists()
+    {
+        return $this->hasMany(Checklist::class, 'parent_checklist_id');
+    }
+
+    // Relasi ke repeat days (untuk weekly repeats)
     public function repeatDays()
     {
         return $this->hasMany(ChecklistRepeatDay::class, 'checklist_id');
+    }
+
+    // Relasi ke repeat days dari parent (untuk bridging)
+    public function parentRepeatDays()
+    {
+        return $this->hasMany(ChecklistRepeatDay::class, 'parent_checklist_id');
+    }
+
+    // Check apakah repeat sudah mencapai limit
+    public function hasReachedRepeatLimit()
+    {
+        if ($this->repeat_type === 'never') {
+            return true; // Tidak repeat
+        }
+
+        if ($this->repeat_type === 'until_date') {
+            return now()->toDateString() > $this->repeat_end_date;
+        }
+
+        if ($this->repeat_type === 'after_count') {
+            return $this->repeat_current_count >= $this->repeat_max_count;
+        }
+
+        return false;
+    }
+
+    public function getOriginalChecklist()
+    {
+        if ($this->parent_checklist_id) {
+            return Checklist::find($this->parent_checklist_id);
+        }
+
+        return $this;
     }
 }

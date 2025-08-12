@@ -25,12 +25,19 @@ class ChecklistRepeatDay extends Model
     protected $fillable = [
         'id',
         'checklist_id',
+        'parent_checklist_id',
         'day',
     ];
 
-    // Relasi balik ke checklist
+    // Relasi ke checklist instance saat ini
     public function checklist()
     {
-        return $this->belongsTo(Checklist::class);
+        return $this->belongsTo(Checklist::class, 'checklist_id');
+    }
+
+    // Relasi ke parent checklist (original)
+    public function parentChecklist()
+    {
+        return $this->belongsTo(Checklist::class, 'parent_checklist_id');
     }
 }

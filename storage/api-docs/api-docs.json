@@ -41,7 +41,7 @@
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Buat checklist baru",
+                "summary": "Buat checklist baru dengan repeat settings",
                 "operationId": "6cd3aa07d0b04a7619eeddde30be97bf",
                 "requestBody": {
                     "required": true,
@@ -50,18 +50,17 @@
                             "schema": {
                                 "required": [
                                     "title",
-                                    "due_time",
-                                    "repeat_interval"
+                                    "due_time"
                                 ],
                                 "properties": {
                                     "title": {
                                         "type": "string",
-                                        "example": "Olahraga"
+                                        "example": "Olahraga Pagi"
                                     },
                                     "due_time": {
                                         "type": "string",
                                         "format": "date-time",
-                                        "example": "2025-07-30T10:00:00"
+                                        "example": "2025-08-01T07:00:00"
                                     },
                                     "repeat_interval": {
                                         "type": "string",
@@ -72,7 +71,25 @@
                                             "monthly",
                                             "yearly"
                                         ],
-                                        "example": "weekly"
+                                        "example": "daily"
+                                    },
+                                    "repeat_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "never",
+                                            "until_date",
+                                            "after_count"
+                                        ],
+                                        "example": "after_count"
+                                    },
+                                    "repeat_end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2025-12-31"
+                                    },
+                                    "repeat_max_count": {
+                                        "type": "integer",
+                                        "example": 10
                                     },
                                     "repeat_days": {
                                         "type": "array",
@@ -89,7 +106,8 @@
                                             ]
                                         },
                                         "example": [
-                                            "sunday",
+                                            "monday",
+                                            "wednesday",
                                             "friday"
                                         ]
                                     }
@@ -101,13 +119,10 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Checklist dibuat"
+                        "description": "Checklist berhasil dibuat"
                     },
                     "422": {
                         "description": "Validasi gagal"
-                    },
-                    "401": {
-                        "description": "Unauthorized"
                     }
                 },
                 "security": [
@@ -144,12 +159,12 @@
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Ambil checklist yang jatuh tempo hari ini",
-                "description": "Mengembalikan daftar checklist yang jatuh tempo hari ini, termasuk yang berulang harian atau mingguan pada hari ini.",
+                "summary": "Ambil checklist overdue dan hari ini (belum complete)",
+                "description": "Mengembalikan checklist yang sudah lewat tanggal + belum complete, plus checklist hari ini.",
                 "operationId": "4021737ce25bb5f4096f0d9c09fc278b",
                 "responses": {
                     "200": {
-                        "description": "List checklist hari ini dikembalikan"
+                        "description": "List checklist today dikembalikan"
                     },
                     "401": {
                         "description": "Unauthorized"
@@ -167,8 +182,8 @@
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Ambil checklist yang jatuh tempo minggu ini",
-                "description": "Mengembalikan daftar checklist yang jatuh tempo dalam minggu ini, termasuk yang berulang harian atau mingguan.",
+                "summary": "Ambil checklist minggu ini (belum complete)",
+                "description": "Mengembalikan checklist yang jatuh tempo dalam minggu ini saja.",
                 "operationId": "a7c2f3fde132037643f02303cc75fcda",
                 "responses": {
                     "200": {
@@ -263,6 +278,24 @@
                                             "yearly"
                                         ],
                                         "example": "weekly"
+                                    },
+                                    "repeat_type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "never",
+                                            "until_date",
+                                            "after_count"
+                                        ],
+                                        "example": "after_count"
+                                    },
+                                    "repeat_end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2025-12-31"
+                                    },
+                                    "repeat_max_count": {
+                                        "type": "integer",
+                                        "example": 10
                                     },
                                     "repeat_days": {
                                         "type": "array",
@@ -384,14 +417,13 @@
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Tandai checklist sebagai selesai (beserta repeat days)",
-                "description": "Menandai checklist utama dan semua repeat_days sebagai selesai.",
+                "summary": "Tandai checklist sebagai selesai dan generate repeat jika perlu",
                 "operationId": "88e53d2d836adaeeb66f347af26c0942",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "UUID checklist yang ingin ditandai selesai",
+                        "description": "UUID checklist",
                         "required": true,
                         "schema": {
                             "type": "string",
@@ -401,13 +433,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Checklist ditandai selesai"
-                    },
-                    "403": {
-                        "description": "Tidak diizinkan"
-                    },
-                    "404": {
-                        "description": "Checklist tidak ditemukan"
+                        "description": "Checklist completed dan repeat generated jika applicable"
                     }
                 },
                 "security": [
@@ -422,8 +448,8 @@
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Tandai checklist sebagai belum selesai (beserta repeat days)",
-                "description": "Menandai checklist utama dan semua repeat_days sebagai belum selesai.",
+                "summary": "Tandai checklist sebagai belum selesai",
+                "description": "Menandai checklist utama sebagai belum selesai.",
                 "operationId": "e4ab46c312c945e8ed42f04ec24d5676",
                 "parameters": [
                     {
@@ -446,82 +472,6 @@
                     },
                     "404": {
                         "description": "Checklist tidak ditemukan"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/checklists/{id}/complete-today": {
-            "post": {
-                "tags": [
-                    "Checklist"
-                ],
-                "summary": "Tandai repeat day checklist weekly",
-                "description": "Secara otomatis menandai checklist weekly berdasarkan hari ini (misalnya 'monday').",
-                "operationId": "d574e1d404006e1ec7f6772c614bbce8",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "UUID checklist",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Repeat day hari ini ditandai selesai"
-                    },
-                    "403": {
-                        "description": "Unauthorized"
-                    },
-                    "404": {
-                        "description": "Checklist tidak ditemukan"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/checklists/{id}/uncomplete-today": {
-            "post": {
-                "tags": [
-                    "Checklist"
-                ],
-                "summary": "Tandai repeat day checklist hari ini sebagai belum selesai",
-                "description": "Menandai repeat day checklist hari ini sebagai belum selesai.",
-                "operationId": "5b43d17d81bc86d099272c2676023473",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "UUID checklist",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Repeat day hari ini ditandai belum selesai"
-                    },
-                    "403": {
-                        "description": "Unauthorized"
-                    },
-                    "404": {
-                        "description": "Checklist atau repeat day tidak ditemukan"
                     }
                 },
                 "security": [
