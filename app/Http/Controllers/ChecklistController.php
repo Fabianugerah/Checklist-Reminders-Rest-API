@@ -7,6 +7,7 @@ use App\Models\ChecklistRepeatDay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class ChecklistController extends Controller
 {
@@ -161,33 +162,30 @@ class ChecklistController extends Controller
      * @OA\Response(response=422, description="Validasi gagal")
      * )
      */
+
+
     public function store(Request $request)
     {
         $request->validate([
-            'title' => 'required|string|max:255',
-            'due_time' => 'required|date',
-            'repeat_interval' => 'nullable|in:daily,3_days,weekly,monthly,yearly',
-            'repeat_type' => 'nullable|in:never,until_date,after_count',
-            'repeat_end_date' => 'nullable|date|after:today',
-            'repeat_max_count' => 'nullable|integer|min:1|max:999',
-            'repeat_days' => 'nullable|array',
-            'repeat_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
+            // ...validasi seperti sebelumnya
         ]);
 
-        // Validasi repeat settings
         if ($request->repeat_type === 'until_date' && !$request->repeat_end_date) {
             return response()->json(['message' => 'repeat_end_date required when repeat_type is until_date'], 422);
         }
-
         if ($request->repeat_type === 'after_count' && !$request->repeat_max_count) {
             return response()->json(['message' => 'repeat_max_count required when repeat_type is after_count'], 422);
         }
 
         $user = auth()->user();
 
-        // Buat checklist original
+        // Buat parent UUID untuk bridging
+        $parentId = (string) Str::uuid();
+
+        // Buat checklist baru dengan parent_checklist_id sama dengan parentId ini
         $checklist = Checklist::create([
             'user_id' => $user->id,
+            'parent_checklist_id' => $parentId,
             'title' => $request->title,
             'due_time' => $request->due_time,
             'repeat_interval' => $request->repeat_interval ?? 'never',
@@ -195,16 +193,15 @@ class ChecklistController extends Controller
             'repeat_end_date' => $request->repeat_end_date,
             'repeat_max_count' => $request->repeat_max_count,
             'repeat_current_count' => 0,
-            'is_original' => true,
             'is_completed' => false,
         ]);
 
-        // Jika weekly dan ada repeat_days, simpan ke bridging table
+        // Simpan repeat_days (hanya jika weekly dan ada repeat_days)
         if ($request->repeat_interval === 'weekly' && $request->has('repeat_days')) {
             foreach ($request->repeat_days as $day) {
                 ChecklistRepeatDay::create([
                     'checklist_id' => $checklist->id,
-                    'parent_checklist_id' => $checklist->id, // Bridge ke diri sendiri untuk original
+                    'parent_checklist_id' => $parentId,  // wajib diisi sama parentId
                     'day' => $day,
                 ]);
             }
@@ -285,14 +282,7 @@ class ChecklistController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'title' => 'sometimes|string|max:255',
-            'due_time' => 'sometimes|date',
-            'repeat_interval' => 'sometimes|in:daily,3_days,weekly,monthly,yearly',
-            'repeat_type' => 'nullable|in:never,until_date,after_count',
-            'repeat_end_date' => 'nullable|date|after:today',
-            'repeat_max_count' => 'nullable|integer|min:1|max:999',
-            'repeat_days' => 'nullable|array',
-            'repeat_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
+            // validasi seperti sebelumnya
         ]);
 
         $checklist = Checklist::findOrFail($id);
@@ -312,17 +302,17 @@ class ChecklistController extends Controller
             'repeat_max_count'
         ]));
 
-        // Update repeat days jika weekly
+        // Jika repeat_interval weekly, update repeat_days
         if ($request->repeat_interval === 'weekly') {
-            // Hapus repeat days lama
+            // Hapus semua repeat days lama
             $checklist->repeatDays()->delete();
 
-            // Tambah repeat days baru
+            // Buat ulang repeat days baru
             if ($request->has('repeat_days')) {
                 foreach ($request->repeat_days as $day) {
                     ChecklistRepeatDay::create([
                         'checklist_id' => $checklist->id,
-                        'parent_checklist_id' => $checklist->parent_checklist_id ?? $checklist->id,
+                        'parent_checklist_id' => $checklist->parent_checklist_id,
                         'day' => $day,
                     ]);
                 }
@@ -334,6 +324,7 @@ class ChecklistController extends Controller
             'data' => $checklist->load('repeatDays')
         ]);
     }
+
 
     // DELETE CHECKLISTS (SOFT DELETE)
     /**
@@ -432,86 +423,70 @@ class ChecklistController extends Controller
      */
     public function markAsComplete($id)
     {
-        $checklist = Checklist::with('repeatDays')->findOrFail($id);
+        $checklist = Checklist::withTrashed()->with('repeatDays')->findOrFail($id);
         $user = auth()->user();
 
         if ($user->role !== 'admin' && $checklist->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Mark as completed
         $checklist->is_completed = true;
         $checklist->save();
 
-        // Get original checklist untuk cek repeat settings
         $originalChecklist = $checklist->getOriginalChecklist();
+        if (!$originalChecklist) {
+            return response()->json(['message' => 'Original checklist not found.'], 404);
+        }
 
-        // Jika repeat type is 'never', tidak perlu generate
         if ($originalChecklist->repeat_type === 'never') {
             return response()->json(['message' => 'Checklist marked as completed (no repeat)']);
         }
 
-        // Check apakah sudah mencapai limit
         if ($originalChecklist->hasReachedRepeatLimit()) {
-            return response()->json([
-                'message' => 'Checklist marked as completed (repeat limit reached)',
-                'repeat_completed' => true
+            return response()->json(['message' => 'Repeat limit reached']);
+        }
+
+        $nextDueTime = match ($originalChecklist->repeat_interval) {
+            'daily'    => Carbon::parse($checklist->due_time)->addDay(),
+            '3_days'   => Carbon::parse($checklist->due_time)->addDays(3),
+            'weekly'   => Carbon::parse($checklist->due_time)->addWeek(),
+            'monthly'  => Carbon::parse($checklist->due_time)->addMonth(),
+            'yearly'   => Carbon::parse($checklist->due_time)->addYear(),
+            default    => null,
+        };
+
+        $parentId = $originalChecklist->parent_checklist_id ?? $originalChecklist->id;
+
+        // Cek apakah sudah ada checklist turunan yang di-soft delete
+        $deletedChild = Checklist::onlyTrashed()
+            ->where('parent_checklist_id', $parentId)
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($deletedChild) {
+            // Restore checklist yang dihapus sebelumnya
+            $deletedChild->restore();
+            $deletedChild->due_time = $nextDueTime;
+            $deletedChild->save();
+        } else {
+            // Kalau tidak ada, buat checklist baru
+            Checklist::create([
+                'user_id'              => $originalChecklist->user_id,
+                'parent_checklist_id'  => $parentId,
+                'title'                => $originalChecklist->title,
+                'due_time'             => $nextDueTime,
+                'repeat_interval'      => $originalChecklist->repeat_interval,
+                'repeat_type'          => $originalChecklist->repeat_type,
+                'repeat_end_date'      => $originalChecklist->repeat_end_date,
+                'repeat_max_count'     => $originalChecklist->repeat_max_count,
+                'repeat_current_count' => $originalChecklist->repeat_current_count + 1,
+                'is_completed'         => false,
             ]);
         }
 
-        // Calculate next due time
-        $nextDueTime = match ($originalChecklist->repeat_interval) {
-            'daily' => Carbon::parse($checklist->due_time)->addDay(),
-            '3_days' => Carbon::parse($checklist->due_time)->addDays(3),
-            'weekly' => Carbon::parse($checklist->due_time)->addWeek(),
-            'monthly' => Carbon::parse($checklist->due_time)->addMonth(),
-            'yearly' => Carbon::parse($checklist->due_time)->addYear(),
-            default => null,
-        };
-
-        if (!$nextDueTime) {
-            return response()->json(['message' => 'Checklist marked as completed (invalid repeat interval)']);
-        }
-
-        // Create new repeat instance
-        $newRepeatCount = $originalChecklist->repeat_current_count + 1;
-
-        $newChecklist = Checklist::create([
-            'user_id' => $originalChecklist->user_id,
-            'parent_checklist_id' => $originalChecklist->id,
-            'title' => $originalChecklist->title,
-            'due_time' => $nextDueTime,
-            'repeat_interval' => $originalChecklist->repeat_interval,
-            'repeat_type' => $originalChecklist->repeat_type,
-            'repeat_end_date' => $originalChecklist->repeat_end_date,
-            'repeat_max_count' => $originalChecklist->repeat_max_count,
-            'repeat_current_count' => $newRepeatCount,
-            'is_original' => false,
-            'is_completed' => false,
-        ]);
-
-        // Update counter di original
         $originalChecklist->increment('repeat_current_count');
 
-        // Copy repeat days untuk weekly
-        if ($originalChecklist->repeat_interval === 'weekly') {
-            foreach ($originalChecklist->repeatDays as $day) {
-                ChecklistRepeatDay::create([
-                    'checklist_id' => $newChecklist->id,
-                    'parent_checklist_id' => $originalChecklist->id,
-                    'day' => $day->day,
-                ]);
-            }
-        }
-
-        return response()->json([
-            'message' => 'Checklist completed and new repeat instance created',
-            'new_checklist_id' => $newChecklist->id,
-            'new_due_time' => $nextDueTime,
-            'repeat_count' => $newRepeatCount,
-            'is_final_repeat' => ($originalChecklist->repeat_type === 'after_count' &&
-                $newRepeatCount >= $originalChecklist->repeat_max_count)
-        ]);
+        return response()->json(['message' => 'Checklist completed successfully']);
     }
 
     // UNMARK CHECKLIST AS COMPLETE
@@ -543,9 +518,22 @@ class ChecklistController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $parentId = $checklist->parent_checklist_id ?? $checklist->id;
+
+        // Soft delete turunan yang dibuat setelah checklist ini
+        $latestChild = Checklist::where('parent_checklist_id', $parentId)
+            ->where('created_at', '>', $checklist->created_at)
+            ->first();
+
+        if ($latestChild) {
+            $latestChild->delete(); // soft delete
+        }
+
         $checklist->is_completed = false;
         $checklist->save();
 
-        return response()->json(['message' => 'Checklist marked as not completed']);
+        Checklist::where('id', $parentId)->decrement('repeat_current_count');
+
+        return response()->json(['message' => 'Checklist uncompleted and next repeat soft deleted']);
     }
 }

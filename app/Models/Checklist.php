@@ -94,9 +94,11 @@ class Checklist extends Model
     public function getOriginalChecklist()
     {
         if ($this->parent_checklist_id) {
-            return Checklist::find($this->parent_checklist_id);
+            $parent = Checklist::find($this->parent_checklist_id);
+            if ($parent) {
+                return $parent;
+            }
         }
-
         return $this;
     }
 }

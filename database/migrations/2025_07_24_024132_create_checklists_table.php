@@ -16,7 +16,7 @@ return new class extends Migration
             $table->uuid('user_id')->index();
 
             // TAMBAHAN BARU: Parent ID untuk bridging repeat instances
-            $table->uuid('parent_checklist_id')->nullable()->index();
+            $table->uuid('parent_checklist_id')->index();
 
             $table->string('title');
             $table->dateTime('due_time');
@@ -24,9 +24,9 @@ return new class extends Migration
 
             // TAMBAHAN BARU: Repeat configuration
             $table->enum('repeat_type', ['never', 'until_date', 'after_count'])->default('never');
-            $table->date('repeat_end_date')->nullable(); // Untuk "until_date"
-            $table->integer('repeat_max_count')->nullable(); // Untuk "after_count"
-            $table->integer('repeat_current_count')->default(0); // Counter saat ini
+            $table->date('repeat_end_date')->nullable();
+            $table->integer('repeat_max_count')->nullable();
+            $table->integer('repeat_current_count')->default(0);
 
             $table->boolean('is_completed')->default(false);
             $table->softDeletes();
@@ -34,7 +34,6 @@ return new class extends Migration
 
             // Foreign keys
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('parent_checklist_id')->references('id')->on('checklists')->onDelete('cascade');
         });
     }
 

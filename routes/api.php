@@ -46,6 +46,4 @@ Route::middleware(['jwt.custom.auth'])->group(function () {
     // Checklist completion
     Route::post('/checklists/{id}/complete', [ChecklistController::class, 'markAsComplete']);
     Route::post('/checklists/{id}/uncomplete', [ChecklistController::class, 'unmarkAsComplete']);
-    Route::post('/checklists/{id}/complete-today', [ChecklistController::class, 'completeTodayRepeatDay']);
-    Route::post('/checklists/{id}/uncomplete-today', [ChecklistController::class, 'uncompleteTodayRepeatDay']);
 });
