@@ -41,7 +41,7 @@ Route::middleware(['jwt.custom.auth'])->group(function () {
     Route::get('/checklists/{id}', [ChecklistController::class, 'show']);
     Route::put('/checklists/{id}', [ChecklistController::class, 'update']);
     Route::delete('/checklists/{id}', [ChecklistController::class, 'destroy']);
-    Route::post('/checklists/{id}/restore', [ChecklistController::class, 'restore']);
+    Route::patch('/checklists/{id}/restore', [ChecklistController::class, 'restore']);
 
     // Checklist completion
     Route::post('/checklists/{id}/complete', [ChecklistController::class, 'markAsComplete']);

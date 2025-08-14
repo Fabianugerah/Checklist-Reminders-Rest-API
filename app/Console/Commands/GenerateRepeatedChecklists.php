@@ -53,8 +53,7 @@ class GenerateRepeatedChecklists extends Command
             if ($original->repeat_interval === 'weekly') {
                 foreach ($original->repeatDays as $day) {
                     ChecklistRepeatDay::create([
-                        'checklist_id' => $repeatInstance->id,
-                        'parent_checklist_id' => $original->id, // Bridge ke original
+                        'parent_checklist_id' => $original->id,
                         'day' => $day->day,
                     ]);
                 }

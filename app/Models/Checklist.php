@@ -20,6 +20,10 @@ class Checklist extends Model
             if (!$model->id) {
                 $model->id = (string) Str::uuid();
             }
+
+            if (!$model->parent_checklist_id) {
+                $model->parent_checklist_id = $model->id; // auto set parent ke dirinya sendiri
+            }
         });
     }
 
@@ -64,7 +68,7 @@ class Checklist extends Model
     // Relasi ke repeat days (untuk weekly repeats)
     public function repeatDays()
     {
-        return $this->hasMany(ChecklistRepeatDay::class, 'checklist_id');
+        return $this->hasMany(ChecklistRepeatDay::class, 'parent_checklist_id', 'parent_checklist_id');
     }
 
     // Relasi ke repeat days dari parent (untuk bridging)

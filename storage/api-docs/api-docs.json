@@ -376,17 +376,17 @@
             }
         },
         "/api/checklists/{id}/restore": {
-            "post": {
+            "patch": {
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Mengembalikan checklist yang telah dihapus (soft delete)",
-                "operationId": "7ac167bc2cf58e348481c64bc5285ad8",
+                "summary": "Restore deleted checklist",
+                "operationId": "a633ebe35d868c6d75e5f288001bd4ee",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "UUID checklist",
+                        "description": "Checklist ID",
                         "required": true,
                         "schema": {
                             "type": "string",
@@ -396,13 +396,10 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Checklist berhasil dikembalikan"
-                    },
-                    "403": {
-                        "description": "Unauthorized"
+                        "description": "Checklist restored successfully"
                     },
                     "404": {
-                        "description": "Checklist tidak ditemukan"
+                        "description": "Checklist not found"
                     }
                 },
                 "security": [
