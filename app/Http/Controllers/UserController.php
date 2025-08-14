@@ -84,7 +84,7 @@ class UserController extends Controller
 
         $user = auth()->user();
 
-        // Simpan token ke database (untuk studi kasus)
+        // Simpan JWT ke database
         $user->token = $token;
         $loggedUser = User::find($user->id);
         if ($loggedUser) {

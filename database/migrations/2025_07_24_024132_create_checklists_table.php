@@ -15,14 +15,14 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('user_id')->index();
 
-            // TAMBAHAN BARU: Parent ID untuk bridging repeat instances
+            // Parent ID untuk bridging repeat instances
             $table->uuid('parent_checklist_id')->index();
 
             $table->string('title');
             $table->dateTime('due_time');
             $table->enum('repeat_interval', ['daily', '3_days', 'weekly', 'monthly', 'yearly'])->default('daily');
 
-            // TAMBAHAN BARU: Repeat configuration
+            // Repeat configuration
             $table->enum('repeat_type', ['never', 'until_date', 'after_count'])->default('never');
             $table->date('repeat_end_date')->nullable();
             $table->integer('repeat_max_count')->nullable();
@@ -32,7 +32,6 @@ return new class extends Migration
             $table->softDeletes();
             $table->timestamps();
 
-            // Foreign keys
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }

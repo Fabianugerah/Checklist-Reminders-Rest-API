@@ -22,7 +22,7 @@ class Checklist extends Model
             }
 
             if (!$model->parent_checklist_id) {
-                $model->parent_checklist_id = $model->id; // auto set parent ke dirinya sendiri
+                $model->parent_checklist_id = $model->id;
             }
         });
     }
@@ -81,7 +81,7 @@ class Checklist extends Model
     public function hasReachedRepeatLimit()
     {
         if ($this->repeat_type === 'never') {
-            return true; // Tidak repeat
+            return true;
         }
 
         if ($this->repeat_type === 'until_date') {

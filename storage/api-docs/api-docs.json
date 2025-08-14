@@ -137,7 +137,7 @@
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Ambil semua checklist yang sudah selesai (is_completed = true)",
+                "summary": "Ambil semua checklist yang sudah selesai",
                 "operationId": "9180a5dbf3094d9dd10437f606751198",
                 "responses": {
                     "200": {
@@ -159,7 +159,7 @@
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Ambil checklist overdue dan hari ini (belum complete)",
+                "summary": "Ambil checklist hari ini (belum complete)",
                 "description": "Mengembalikan checklist yang sudah lewat tanggal + belum complete, plus checklist hari ini.",
                 "operationId": "4021737ce25bb5f4096f0d9c09fc278b",
                 "responses": {
@@ -414,7 +414,7 @@
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Tandai checklist sebagai selesai dan generate repeat jika perlu",
+                "summary": "Tandai checklist sebagai completed",
                 "operationId": "88e53d2d836adaeeb66f347af26c0942",
                 "parameters": [
                     {
@@ -445,8 +445,8 @@
                 "tags": [
                     "Checklist"
                 ],
-                "summary": "Tandai checklist sebagai belum selesai",
-                "description": "Menandai checklist utama sebagai belum selesai.",
+                "summary": "Tandai checklist sebagai uncompleted",
+                "description": "Menandai checklist sebagai belum selesai.",
                 "operationId": "e4ab46c312c945e8ed42f04ec24d5676",
                 "parameters": [
                     {

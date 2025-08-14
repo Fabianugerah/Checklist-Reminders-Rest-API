@@ -28,7 +28,6 @@ class ChecklistRepeatDay extends Model
         'day',
     ];
 
-    // Relationship with Checklist
     public function parentChecklist()
     {
         return $this->belongsTo(Checklist::class, 'parent_checklist_id', 'id');

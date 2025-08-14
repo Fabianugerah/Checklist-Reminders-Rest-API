@@ -36,11 +36,12 @@ class ChecklistController extends Controller
         return response()->json($checklists);
     }
 
+    // GET CHECKLISTS COMPLETED
     /**
      * @OA\Get(
      * path="/api/checklists/completed",
      * tags={"Checklist"},
-     * summary="Ambil semua checklist yang sudah selesai (is_completed = true)",
+     * summary="Ambil semua checklist yang sudah selesai",
      * security={{"bearerAuth":{}}},
      * @OA\Response(response=200, description="Checklist yang sudah selesai dikembalikan"),
      * @OA\Response(response=401, description="Unauthorized")
@@ -65,7 +66,7 @@ class ChecklistController extends Controller
      * @OA\Get(
      * path="/api/checklists/today",
      * tags={"Checklist"},
-     * summary="Ambil checklist overdue dan hari ini (belum complete)",
+     * summary="Ambil checklist hari ini (belum complete)",
      * description="Mengembalikan checklist yang sudah lewat tanggal + belum complete, plus checklist hari ini.",
      * security={{"bearerAuth":{}}},
      * @OA\Response(response=200, description="List checklist today dikembalikan"),
@@ -84,8 +85,8 @@ class ChecklistController extends Controller
             ->where('is_completed', false)
             ->where(function ($query) use ($today) {
                 $query
-                    ->whereDate('due_time', '<', $today)  // Overdue
-                    ->orWhereDate('due_time', $today);    // Today
+                    ->whereDate('due_time', '<', $today)
+                    ->orWhereDate('due_time', $today);
             })
             ->orderBy('due_time', 'asc')
             ->get();
@@ -133,7 +134,7 @@ class ChecklistController extends Controller
         ]);
     }
 
-    // POST CHECKLISTS - SIMPLIFIED
+    // POST CHECKLISTS
     /**
      * @OA\Post(
      * path="/api/checklists",
@@ -162,12 +163,17 @@ class ChecklistController extends Controller
      * @OA\Response(response=422, description="Validasi gagal")
      * )
      */
-
-
     public function store(Request $request)
     {
         $request->validate([
-            // ...validasi seperti sebelumnya
+            'title' => 'required|string|max:255',
+            'due_time' => 'required|date',
+            'repeat_interval' => 'nullable|in:daily,3_days,weekly,monthly,yearly',
+            'repeat_type' => 'nullable|in:never,until_date,after_count',
+            'repeat_end_date' => 'nullable|date',
+            'repeat_max_count' => 'nullable|integer|min:1',
+            'repeat_days' => 'nullable|array',
+            'repeat_days.*' => 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
         ]);
 
         if ($request->repeat_type === 'until_date' && !$request->repeat_end_date) {
@@ -179,7 +185,6 @@ class ChecklistController extends Controller
 
         $user = auth()->user();
 
-        // Buat parent UUID untuk bridging
         $parentId = (string) Str::uuid();
 
         // Buat checklist baru dengan parent_checklist_id sama dengan parentId ini
@@ -243,7 +248,7 @@ class ChecklistController extends Controller
         return response()->json($checklist);
     }
 
-    // UPDATE CHECKLISTS - SIMPLIFIED
+    // UPDATE CHECKLISTS
     /**
      * @OA\Put(
      * path="/api/checklists/{id}",
@@ -280,7 +285,6 @@ class ChecklistController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // Validasi input
         $request->validate([
             'title' => 'required|string|max:255',
             'due_time' => 'required|date',
@@ -323,9 +327,6 @@ class ChecklistController extends Controller
             }
         }
 
-        // ===============================
-        // Sinkronisasi checklist turunan yang di-soft delete
-        // ===============================
         $trashedChildren = Checklist::onlyTrashed()
             ->where('parent_checklist_id', $checklist->parent_checklist_id)
             ->get();
@@ -336,7 +337,6 @@ class ChecklistController extends Controller
             $child->repeat_type = $checklist->repeat_type;
             $child->repeat_end_date = $checklist->repeat_end_date;
             $child->repeat_max_count = $checklist->repeat_max_count;
-            // due_time turunan tetap, karena jadwal baru dihitung saat complete
             $child->save();
         }
 
@@ -381,7 +381,7 @@ class ChecklistController extends Controller
         // Soft delete child checklist
         Checklist::where('parent_checklist_id', $checklist->id)->delete();
 
-        // Soft delete repeat days (jika model RepeatDay juga pakai SoftDeletes)
+        // Soft delete repeat days
         if (method_exists($checklist->repeatDays()->getModel(), 'bootSoftDeletes')) {
             $checklist->repeatDays()->delete();
         }
@@ -389,7 +389,7 @@ class ChecklistController extends Controller
         return response()->json(['message' => 'Checklist deleted successfully']);
     }
 
-
+    // RESTORE DELETED CHECKLISTS
     /**
      * @OA\Patch(
      *     path="/api/checklists/{id}/restore",
@@ -434,12 +434,12 @@ class ChecklistController extends Controller
         ], 200);
     }
 
-    // MARK CHECKLIST AS COMPLETE - SIMPLIFIED
+    // MARK CHECKLIST AS COMPLETE
     /**
      * @OA\Post(
      * path="/api/checklists/{id}/complete",
      * tags={"Checklist"},
-     * summary="Tandai checklist sebagai selesai dan generate repeat jika perlu",
+     * summary="Tandai checklist sebagai completed",
      * security={{"bearerAuth":{}}},
      * @OA\Parameter(
      * name="id",
@@ -460,7 +460,6 @@ class ChecklistController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Cegah complete ulang
         if ($checklist->is_completed) {
             return response()->json(['message' => 'Checklist already completed'], 400);
         }
@@ -484,7 +483,6 @@ class ChecklistController extends Controller
         $currentDate = Carbon::parse($checklist->due_time);
         $nextDueTime = null;
 
-        // PRIORITAS: repeatDays
         $repeatDays = $originalChecklist->repeatDays
             ->pluck('day')
             ->map(fn($day) => strtolower($day))
@@ -520,7 +518,6 @@ class ChecklistController extends Controller
 
             $nextDueTime = $currentDate->copy()->addDays($daysToAdd);
         } else {
-            // Fallback ke repeat_interval lama
             switch ($originalChecklist->repeat_interval) {
                 case 'daily':
                     $nextDueTime = $currentDate->addDay();
@@ -542,7 +539,6 @@ class ChecklistController extends Controller
 
         $parentId = $originalChecklist->parent_checklist_id ?? $originalChecklist->id;
 
-        // Restore jika ada turunan soft delete
         $deletedChild = Checklist::onlyTrashed()
             ->where('parent_checklist_id', $parentId)
             ->orderBy('created_at', 'desc')
@@ -569,7 +565,12 @@ class ChecklistController extends Controller
 
         $originalChecklist->increment('repeat_current_count');
 
-        return response()->json(['message' => 'Checklist completed successfully']);
+        $formatedNextDueTime = $nextDueTime->format('l, Y-m-d H:i:s');
+
+        return response()->json([
+            'message' => 'Checklist completed successfully',
+            'next_due_time' => $formatedNextDueTime,
+        ]);
     }
 
     // UNMARK CHECKLIST AS COMPLETE
@@ -577,8 +578,8 @@ class ChecklistController extends Controller
      * @OA\Post(
      * path="/api/checklists/{id}/uncomplete",
      * tags={"Checklist"},
-     * summary="Tandai checklist sebagai belum selesai",
-     * description="Menandai checklist utama sebagai belum selesai.",
+     * summary="Tandai checklist sebagai uncompleted",
+     * description="Menandai checklist sebagai belum selesai.",
      * security={{"bearerAuth":{}}},
      * @OA\Parameter(
      * name="id",
@@ -603,13 +604,12 @@ class ChecklistController extends Controller
 
         $parentId = $checklist->parent_checklist_id ?? $checklist->id;
 
-        // Soft delete turunan yang dibuat setelah checklist ini
         $latestChild = Checklist::where('parent_checklist_id', $parentId)
             ->where('created_at', '>', $checklist->created_at)
             ->first();
 
         if ($latestChild) {
-            $latestChild->delete(); // soft delete
+            $latestChild->delete();
         }
 
         $checklist->is_completed = false;
@@ -617,6 +617,8 @@ class ChecklistController extends Controller
 
         Checklist::where('id', $parentId)->decrement('repeat_current_count');
 
-        return response()->json(['message' => 'Checklist uncompleted and next repeat soft deleted']);
+        return response()->json([
+            'message' => 'Checklist uncompleted successfully'
+        ]);
     }
 }
