@@ -29,6 +29,7 @@ return new class extends Migration
             $table->integer('repeat_current_count')->default(0);
 
             $table->boolean('is_completed')->default(false);
+            $table->boolean('has_generated_next')->default(false);
             $table->softDeletes();
             $table->timestamps();
 

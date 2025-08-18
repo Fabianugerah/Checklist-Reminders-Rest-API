@@ -74,7 +74,7 @@ class UserController extends Controller
      *     @OA\Response(response=401, description="Kredensial salah")
      * )
      */
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
         $credentials = $request->only('email', 'password');
 

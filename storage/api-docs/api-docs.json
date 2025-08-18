@@ -60,7 +60,7 @@
                                     "due_time": {
                                         "type": "string",
                                         "format": "date-time",
-                                        "example": "2025-08-01T07:00:00"
+                                        "example": "2025-08-18T07:00:00"
                                     },
                                     "repeat_interval": {
                                         "type": "string",
@@ -71,7 +71,7 @@
                                             "monthly",
                                             "yearly"
                                         ],
-                                        "example": "daily"
+                                        "example": "weekly"
                                     },
                                     "repeat_type": {
                                         "type": "string",
@@ -160,7 +160,7 @@
                     "Checklist"
                 ],
                 "summary": "Ambil checklist hari ini (belum complete)",
-                "description": "Mengembalikan checklist yang sudah lewat tanggal + belum complete, plus checklist hari ini.",
+                "description": "Mengembalikan checklist yang sudah lewat tanggal dan belum complete + checklist hari ini.",
                 "operationId": "4021737ce25bb5f4096f0d9c09fc278b",
                 "responses": {
                     "200": {
@@ -183,7 +183,7 @@
                     "Checklist"
                 ],
                 "summary": "Ambil checklist minggu ini (belum complete)",
-                "description": "Mengembalikan checklist yang jatuh tempo dalam minggu ini saja.",
+                "description": "Mengembalikan checklist yang jatuh tempo dalam minggu ini.",
                 "operationId": "a7c2f3fde132037643f02303cc75fcda",
                 "responses": {
                     "200": {
@@ -266,7 +266,7 @@
                                     "due_time": {
                                         "type": "string",
                                         "format": "date-time",
-                                        "example": "2025-08-01T07:00:00"
+                                        "example": "2025-08-18T07:00:00"
                                     },
                                     "repeat_interval": {
                                         "type": "string",
@@ -396,10 +396,10 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Checklist restored successfully"
+                        "description": "Checklist sukses dipulihkan"
                     },
                     "404": {
-                        "description": "Checklist not found"
+                        "description": "Checklist tidak ditemukan atau tidak dihapus"
                     }
                 },
                 "security": [
@@ -415,12 +415,13 @@
                     "Checklist"
                 ],
                 "summary": "Tandai checklist sebagai completed",
+                "description": "Menandai checklist sebagai selesai.",
                 "operationId": "88e53d2d836adaeeb66f347af26c0942",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "UUID checklist",
+                        "description": "UUID Checklist",
                         "required": true,
                         "schema": {
                             "type": "string",
@@ -430,7 +431,13 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Checklist completed dan repeat generated jika applicable"
+                        "description": "Checklist ditandai selesai"
+                    },
+                    "403": {
+                        "description": "Tidak diizinkan"
+                    },
+                    "404": {
+                        "description": "Checklist tidak ditemukan"
                     }
                 },
                 "security": [
@@ -452,7 +459,7 @@
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "UUID checklist yang ingin ditandai belum selesai",
+                        "description": "UUID Checklist",
                         "required": true,
                         "schema": {
                             "type": "string",

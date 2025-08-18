@@ -67,7 +67,7 @@ class ChecklistController extends Controller
      * path="/api/checklists/today",
      * tags={"Checklist"},
      * summary="Ambil checklist hari ini (belum complete)",
-     * description="Mengembalikan checklist yang sudah lewat tanggal + belum complete, plus checklist hari ini.",
+     * description="Mengembalikan checklist yang sudah lewat tanggal dan belum complete + checklist hari ini.",
      * security={{"bearerAuth":{}}},
      * @OA\Response(response=200, description="List checklist today dikembalikan"),
      * @OA\Response(response=401, description="Unauthorized")
@@ -104,7 +104,7 @@ class ChecklistController extends Controller
      * path="/api/checklists/weekly",
      * tags={"Checklist"},
      * summary="Ambil checklist minggu ini (belum complete)",
-     * description="Mengembalikan checklist yang jatuh tempo dalam minggu ini saja.",
+     * description="Mengembalikan checklist yang jatuh tempo dalam minggu ini.",
      * security={{"bearerAuth":{}}},
      * @OA\Response(response=200, description="List checklist minggu ini dikembalikan"),
      * @OA\Response(response=401, description="Unauthorized")
@@ -146,8 +146,8 @@ class ChecklistController extends Controller
      * @OA\JsonContent(
      * required={"title", "due_time"},
      * @OA\Property(property="title", type="string", example="Olahraga Pagi"),
-     * @OA\Property(property="due_time", type="string", format="date-time", example="2025-08-01T07:00:00"),
-     * @OA\Property(property="repeat_interval", type="string", enum={"daily", "3_days", "weekly", "monthly", "yearly"}, example="daily"),
+     * @OA\Property(property="due_time", type="string", format="date-time", example="2025-08-18T07:00:00"),
+     * @OA\Property(property="repeat_interval", type="string", enum={"daily", "3_days", "weekly", "monthly", "yearly"}, example="weekly"),
      * @OA\Property(property="repeat_type", type="string", enum={"never", "until_date", "after_count"}, example="after_count"),
      * @OA\Property(property="repeat_end_date", type="string", format="date", example="2025-12-31"),
      * @OA\Property(property="repeat_max_count", type="integer", example=10),
@@ -212,6 +212,7 @@ class ChecklistController extends Controller
         }
 
         return response()->json([
+            'status' => 'success',
             'message' => 'Checklist created successfully',
             'data' => $checklist->load('repeatDays')
         ], 201);
@@ -265,7 +266,7 @@ class ChecklistController extends Controller
      * @OA\RequestBody(
      * @OA\JsonContent(
      * @OA\Property(property="title", type="string", example="Olahraga Pagi"),
-     * @OA\Property(property="due_time", type="string", format="date-time", example="2025-08-01T07:00:00"),
+     * @OA\Property(property="due_time", type="string", format="date-time", example="2025-08-18T07:00:00"),
      * @OA\Property(property="repeat_interval", type="string", enum={"daily", "3_days", "weekly", "monthly", "yearly"}, example="weekly"),
      * @OA\Property(property="repeat_type", type="string", enum={"never", "until_date", "after_count"}, example="after_count"),
      * @OA\Property(property="repeat_end_date", type="string", format="date", example="2025-12-31"),
@@ -405,11 +406,11 @@ class ChecklistController extends Controller
      *     ),
      *     @OA\Response(
      *         response=200,
-     *         description="Checklist restored successfully"
+     *         description="Checklist sukses dipulihkan",
      *     ),
      *     @OA\Response(
      *         response=404,
-     *         description="Checklist not found"
+     *         description="Checklist tidak ditemukan atau tidak dihapus"
      *     )
      * )
      */
@@ -440,20 +441,23 @@ class ChecklistController extends Controller
      * path="/api/checklists/{id}/complete",
      * tags={"Checklist"},
      * summary="Tandai checklist sebagai completed",
+     * description="Menandai checklist sebagai selesai.",
      * security={{"bearerAuth":{}}},
      * @OA\Parameter(
      * name="id",
      * in="path",
      * required=true,
-     * description="UUID checklist",
+     * description="UUID Checklist",
      * @OA\Schema(type="string", format="uuid")
      * ),
-     * @OA\Response(response=200, description="Checklist completed dan repeat generated jika applicable")
+     * @OA\Response(response=200, description="Checklist ditandai selesai"),
+     * @OA\Response(response=403, description="Tidak diizinkan"),
+     * @OA\Response(response=404, description="Checklist tidak ditemukan")
      * )
      */
     public function markAsComplete($id)
     {
-        $checklist = Checklist::withTrashed()->with('repeatDays')->findOrFail($id);
+        $checklist = Checklist::with('repeatDays')->findOrFail($id);
         $user = auth()->user();
 
         if ($user->role !== 'admin' && $checklist->user_id !== $user->id) {
@@ -467,23 +471,24 @@ class ChecklistController extends Controller
         $checklist->is_completed = true;
         $checklist->save();
 
-        $originalChecklist = $checklist->getOriginalChecklist();
-        if (!$originalChecklist) {
-            return response()->json(['message' => 'Original checklist not found.'], 404);
+        if ($checklist->has_generated_next) {
+            return response()->json([
+                'message' => 'Checklist completed successfully',
+            ]);
         }
 
-        if ($originalChecklist->repeat_type === 'never') {
+        if ($checklist->repeat_type === 'never') {
             return response()->json(['message' => 'Checklist marked as completed (no repeat)']);
         }
 
-        if ($originalChecklist->hasReachedRepeatLimit()) {
+        if ($checklist->hasReachedRepeatLimit()) {
             return response()->json(['message' => 'Repeat limit reached']);
         }
 
         $currentDate = Carbon::parse($checklist->due_time);
         $nextDueTime = null;
 
-        $repeatDays = $originalChecklist->repeatDays
+        $repeatDays = $checklist->repeatDays
             ->pluck('day')
             ->map(fn($day) => strtolower($day))
             ->toArray();
@@ -518,7 +523,7 @@ class ChecklistController extends Controller
 
             $nextDueTime = $currentDate->copy()->addDays($daysToAdd);
         } else {
-            switch ($originalChecklist->repeat_interval) {
+            switch ($checklist->repeat_interval) {
                 case 'daily':
                     $nextDueTime = $currentDate->addDay();
                     break;
@@ -537,33 +542,25 @@ class ChecklistController extends Controller
             }
         }
 
-        $parentId = $originalChecklist->parent_checklist_id ?? $originalChecklist->id;
+        // Buat repeat instance baru
+        Checklist::create([
+            'user_id'              => $checklist->user_id,
+            'parent_checklist_id'  => $checklist->parent_checklist_id ?? $checklist->id,
+            'title'                => $checklist->title,
+            'due_time'             => $nextDueTime,
+            'repeat_interval'      => $checklist->repeat_interval,
+            'repeat_type'          => $checklist->repeat_type,
+            'repeat_end_date'      => $checklist->repeat_end_date,
+            'repeat_max_count'     => $checklist->repeat_max_count,
+            'repeat_current_count' => $checklist->repeat_current_count + 1,
+            'is_completed'         => false,
+            'has_generated_next'   => false,
+        ]);
 
-        $deletedChild = Checklist::onlyTrashed()
-            ->where('parent_checklist_id', $parentId)
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        if ($deletedChild) {
-            $deletedChild->restore();
-            $deletedChild->due_time = $nextDueTime;
-            $deletedChild->save();
-        } else {
-            Checklist::create([
-                'user_id'              => $originalChecklist->user_id,
-                'parent_checklist_id'  => $parentId,
-                'title'                => $originalChecklist->title,
-                'due_time'             => $nextDueTime,
-                'repeat_interval'      => $originalChecklist->repeat_interval,
-                'repeat_type'          => $originalChecklist->repeat_type,
-                'repeat_end_date'      => $originalChecklist->repeat_end_date,
-                'repeat_max_count'     => $originalChecklist->repeat_max_count,
-                'repeat_current_count' => $originalChecklist->repeat_current_count + 1,
-                'is_completed'         => false,
-            ]);
-        }
-
-        $originalChecklist->increment('repeat_current_count');
+        // Tandai bahwa checklist ini sudah pernah generate
+        $checklist->has_generated_next = true;
+        $checklist->increment('repeat_current_count');
+        $checklist->save();
 
         $formatedNextDueTime = $nextDueTime->format('l, Y-m-d H:i:s');
 
@@ -585,7 +582,7 @@ class ChecklistController extends Controller
      * name="id",
      * in="path",
      * required=true,
-     * description="UUID checklist yang ingin ditandai belum selesai",
+     * description="UUID Checklist",
      * @OA\Schema(type="string", format="uuid")
      * ),
      * @OA\Response(response=200, description="Checklist ditandai belum selesai"),
@@ -602,20 +599,12 @@ class ChecklistController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $parentId = $checklist->parent_checklist_id ?? $checklist->id;
-
-        $latestChild = Checklist::where('parent_checklist_id', $parentId)
-            ->where('created_at', '>', $checklist->created_at)
-            ->first();
-
-        if ($latestChild) {
-            $latestChild->delete();
+        if (!$checklist->is_completed) {
+            return response()->json(['message' => 'Checklist is already uncompleted'], 400);
         }
 
         $checklist->is_completed = false;
         $checklist->save();
-
-        Checklist::where('id', $parentId)->decrement('repeat_current_count');
 
         return response()->json([
             'message' => 'Checklist uncompleted successfully'
