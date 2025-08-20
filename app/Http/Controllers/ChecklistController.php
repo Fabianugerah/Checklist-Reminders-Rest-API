@@ -304,7 +304,12 @@ class ChecklistController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Update checklist utama (parent)
+        // Cek apakah checklist sudah complete
+        if ($checklist->is_completed) {
+            return response()->json(['message' => 'Cannot update completed checklist'], 400);
+        }
+
+        // Update checklist utama
         $checklist->update($request->only([
             'title',
             'due_time',
@@ -314,12 +319,12 @@ class ChecklistController extends Controller
             'repeat_max_count'
         ]));
 
-        // Jika repeat_interval weekly, update repeat_days sesuai input terbaru
+        // Update repeat_days untuk weekly
         if ($request->repeat_interval === 'weekly' && $request->has('repeat_days')) {
-            // Hapus semua repeatDays lama
-            $checklist->repeatDays()->delete();
+            // Hapus repeat_days lama
+            ChecklistRepeatDay::where('parent_checklist_id', $checklist->parent_checklist_id)->delete();
 
-            // Buat ulang repeatDays sesuai input terbaru
+            // Buat repeat_days baru
             foreach ($request->repeat_days as $day) {
                 ChecklistRepeatDay::create([
                     'parent_checklist_id' => $checklist->parent_checklist_id,
@@ -328,6 +333,106 @@ class ChecklistController extends Controller
             }
         }
 
+        // Update children yang masih aktif dan belum complete
+        $activeIncompleteChildren = Checklist::where('parent_checklist_id', $checklist->parent_checklist_id)
+            ->where('id', '!=', $checklist->id)
+            ->where('is_completed', false)
+            ->orderBy('repeat_current_count', 'asc')
+            ->get();
+
+        foreach ($activeIncompleteChildren as $child) {
+            // Cari checklist complete dengan repeat_current_count terbesar yang lebih kecil dari child
+            $lastCompletedBefore = Checklist::where('parent_checklist_id', $checklist->parent_checklist_id)
+                ->where('is_completed', true)
+                ->where('repeat_current_count', '<', $child->repeat_current_count)
+                ->orderBy('repeat_current_count', 'desc')
+                ->first();
+
+            if ($lastCompletedBefore) {
+                $baseDueTime = Carbon::parse($lastCompletedBefore->due_time);
+                $stepsToAdd = $child->repeat_current_count - $lastCompletedBefore->repeat_current_count;
+            } else {
+                $baseDueTime = Carbon::parse($checklist->due_time);
+                $stepsToAdd = $child->repeat_current_count - $checklist->repeat_current_count;
+            }
+
+            $currentDate = $baseDueTime->copy();
+
+            // untuk weekly
+            if ($checklist->repeat_interval === 'weekly') {
+                $repeatDays = ChecklistRepeatDay::where('parent_checklist_id', $checklist->parent_checklist_id)
+                    ->pluck('day')
+                    ->map(fn($day) => strtolower($day))
+                    ->toArray();
+
+                if (!empty($repeatDays)) {
+                    $dayMap = [
+                        'sunday' => 0,
+                        'monday' => 1,
+                        'tuesday' => 2,
+                        'wednesday' => 3,
+                        'thursday' => 4,
+                        'friday' => 5,
+                        'saturday' => 6,
+                    ];
+
+                    $repeatIndexes = collect($repeatDays)->map(fn($d) => $dayMap[$d])->sort()->values();
+
+                    for ($i = 0; $i < $stepsToAdd; $i++) {
+                        $currentDayIndex = $currentDate->dayOfWeek;
+                        $nextDayIndex = null;
+
+                        foreach ($repeatIndexes as $dayIndex) {
+                            if ($dayIndex > $currentDayIndex) {
+                                $nextDayIndex = $dayIndex;
+                                break;
+                            }
+                        }
+
+                        if ($nextDayIndex !== null) {
+                            $daysToAdd = $nextDayIndex - $currentDayIndex;
+                        } else {
+                            $daysToAdd = (7 - $currentDayIndex) + $repeatIndexes->first();
+                        }
+
+                        $currentDate->addDays($daysToAdd);
+                    }
+
+                    $newDueTime = $currentDate;
+                } else {
+                    $newDueTime = $baseDueTime->copy()->addWeeks($stepsToAdd);
+                }
+            } else {
+                $newDueTime = $baseDueTime->copy();
+                for ($i = 0; $i < $stepsToAdd; $i++) {
+                    switch ($checklist->repeat_interval) {
+                        case 'daily':
+                            $newDueTime->addDay();
+                            break;
+                        case '3_days':
+                            $newDueTime->addDays(3);
+                            break;
+                        case 'monthly':
+                            $newDueTime->addMonth();
+                            break;
+                        case 'yearly':
+                            $newDueTime->addYear();
+                            break;
+                    }
+                }
+            }
+
+            $child->update([
+                'title' => $checklist->title,
+                'due_time' => $newDueTime,
+                'repeat_interval' => $checklist->repeat_interval,
+                'repeat_type' => $checklist->repeat_type,
+                'repeat_end_date' => $checklist->repeat_end_date,
+                'repeat_max_count' => $checklist->repeat_max_count,
+            ]);
+        }
+
+        // Update children yang di-trash (soft deleted)
         $trashedChildren = Checklist::onlyTrashed()
             ->where('parent_checklist_id', $checklist->parent_checklist_id)
             ->get();
@@ -346,7 +451,6 @@ class ChecklistController extends Controller
             'data' => $checklist->load('repeatDays')
         ]);
     }
-
 
     // DELETE CHECKLISTS (SOFT DELETE)
     /**
@@ -559,7 +663,6 @@ class ChecklistController extends Controller
 
         // Tandai bahwa checklist ini sudah pernah generate
         $checklist->has_generated_next = true;
-        $checklist->increment('repeat_current_count');
         $checklist->save();
 
         $formatedNextDueTime = $nextDueTime->format('l, Y-m-d H:i:s');

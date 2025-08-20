@@ -36,6 +36,8 @@ A Laravel RESTful API that lets users manage checklist reminders. It supports **
 
 ![Swagger Documentation](/public/img/preview.png)
 
+---
+
 ## ⚙️ Installation Guide
 
 ### 1. Clone the repository
